@@ -8,7 +8,10 @@ version = "0.1.0"
 description = "Versioned metadata contracts for reproducible semantic data binding"
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = ["pydantic>=2.11,<3"]
+dependencies = [
+    "bm25s[indexing]==0.3.13",
+    "pydantic>=2.11,<3",
+]
 
 [dependency-groups]
 dev = ["pytest>=8,<10", "ruff>=0.11,<1", "pyright[nodejs]>=1.1.400,<2"]
