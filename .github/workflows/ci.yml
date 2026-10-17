@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
+        with:
+          version: "0.13.1"
+          python-version: "3.11"
+          enable-cache: true
+      - name: Sync locked dependencies
+        run: uv sync --locked --all-groups
+      - name: Offline unit tests
+        env:
+          UV_OFFLINE: "true"
+        run: uv run pytest tests/unit -q -W error
+      - name: Ruff
+        env:
+          UV_OFFLINE: "true"
+        run: uv run ruff check
+      - name: Strict Pyright
+        env:
+          UV_OFFLINE: "true"
+        run: uv run pyright
+      - name: Whitespace validation
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: bash .github/scripts/check-whitespace.sh "$BASE_SHA" "$HEAD_SHA"

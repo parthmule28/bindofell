@@ -7,8 +7,8 @@ Bindofell is a public, research-driven semantic data-binding project. Version 0.
 Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).
 
 ```sh
-uv sync --all-groups
-uv run pytest tests/unit/domain tests/unit/metadata tests/unit/retrieval -q
+uv sync --locked --all-groups
+uv run pytest tests/unit -q -W error
 uv run ruff check
 uv run pyright
 ```
@@ -33,11 +33,25 @@ uv run python scripts/fetch_omop_metadata.py --verify-only
 
 The default `.data/omop-v5.5.0/` output is ignored by Git. Acquisition refuses
 overwrites and checks the release commit and reviewed file hashes. Unit tests
-use only synthetic fixtures and block network connections. Ranking, benchmark
-contracts and `bindofell search/evaluate` are deferred to later work packages.
+use only synthetic fixtures and block network connections. Ranking and
+`bindofell search/evaluate` remain deferred to later work packages.
 
 See [B01 formats and usage](docs/usage/b01-metadata.md), the
 [core contracts](docs/design/0001-bindofell-core.md), the
 [benchmark specification](docs/design/0002-benchmark-v0.1.md),
 [source assessment](docs/datasets/source-assessment.md) and the
 [implementation plan](docs/plans/b00-b04-implementation.md).
+
+## B02: benchmark and evaluation foundation
+
+Versioned A/B/C annotations, frozen eligible universes, deterministic grouped
+splits and exact metrics can now evaluate supplied synthetic rankings offline.
+Outcome classification requires explicit, separate decisions for every included
+case; rankings alone do not classify no-match or clarification. Results preserve
+case/gold versions, annotation grade, evidence, raw scores and static provenance.
+
+See the runnable [B02 usage example](docs/usage/b02-benchmark.md),
+[annotation protocol](docs/benchmark/annotation-protocol.md) and
+[synthetic fixtures](tests/fixtures/benchmark/README.md). No real OMOP pilot or
+independently validated gold is included. B02 requires independent review before
+B03 begins.
