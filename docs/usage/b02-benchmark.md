@@ -121,6 +121,25 @@ IDs. Persist that record and digest unchanged across all compared methods.
 ranking is allowed; omitting an eligible field from the index is a validation
 failure.
 
+Gold source evidence is checked for every final, annotator and adjudicator
+mapping. Source asset IDs must resolve to the snapshot, dataset, table, field or
+relationship; source digests must belong to the snapshot's manifest. Rejected
+field IDs must exist in the snapshot (they may be ineligible for a documented
+reason), and accepted/plausible IDs must also be eligible.
+
+Where original source evidence records are available, an existing evidence ID
+is immutable. A new evidence ID must still match the asset's original source
+digest, locator, attribute and value, or a nonempty verbatim text excerpt.
+Excerpts require a new ID; retaining an original ID while changing its contents
+fails. Inventing a new ID cannot bypass these checks. When an asset has no
+original source records, the named scalar attribute must exist in its raw
+attributes or canonical metadata and the value must match (or be a verbatim
+text excerpt). Missing metadata cannot be replaced with an invented description.
+Without original records the exact locator cannot be independently verified;
+the checker verifies available snapshot content and manifest membership, not
+external source bytes or human correctness. Errors include case, review decision
+and source evidence ID, plus file/line when loaded from JSONL.
+
 Every accepted A alternative and plausible C field must exist in the snapshot
 and eligible universe, including partially eligible OR lists. This implementation
 **fails closed**; it does not implement automatic eligibility exclusions. Correct

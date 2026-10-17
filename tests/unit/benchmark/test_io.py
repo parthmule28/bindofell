@@ -155,3 +155,134 @@ def test_all_fields_policy_cannot_claim_a_subset():
     snapshot, _ = inputs()
     with pytest.raises(ValueError, match="all-physical-fields.*complete"):
         make_universe(snapshot, field_ids=(snapshot.fields[0].field_id,))
+
+
+def original_evidence_inputs():
+    """A real toy asset record, not a fabricated source-evidence checker."""
+    snapshot, universe = inputs()
+    value = records()[0]
+    data = snapshot.model_dump(mode="json")
+    for source in value["gold"]["evidence"]:
+        asset = next(f for f in data["fields"] if f["field_id"] == source["asset_id"])
+        source["value"] = asset["description"]
+        asset["evidence"] = [dict(source)]
+    from bindofell.domain.models import EstateSnapshot
+
+    return EstateSnapshot.model_validate(data), universe, value
+
+
+@pytest.mark.parametrize(
+    "mutation,match",
+    [
+        ("unknown_asset", "asset"),
+        ("unknown_digest", "digest"),
+        ("changed_locator", "original evidence"),
+        ("changed_attribute", "original evidence"),
+        ("changed_value", "original evidence"),
+        ("rebound_original_id", "original evidence"),
+        ("unknown_rejected", "outside snapshot"),
+    ],
+)
+def test_gold_source_evidence_must_agree_with_snapshot(mutation, match):
+    from bindofell.benchmark.io import cases_from_jsonl
+
+    snapshot, universe, value = original_evidence_inputs()
+    # First prove the unmodified source records are accepted.
+    assert cases_from_jsonl(text([value]), snapshot, universe)
+    source = value["gold"]["evidence"][0]
+    if mutation == "unknown_asset":
+        value["gold"]["evidence"].append(
+            {**source, "evidence_id": "urn:toy:extra:evidence", "asset_id": "urn:toy:missing"}
+        )
+    elif mutation == "unknown_digest":
+        source["source_digest"] = "b" * 64
+    elif mutation == "changed_locator":
+        source["source_locator"] = "synthetic://invented/row=99"
+    elif mutation == "changed_attribute":
+        source["attribute"] = "invented_attribute"
+    elif mutation == "changed_value":
+        source["value"] = "Invented source meaning"
+    elif mutation == "rebound_original_id":
+        source["evidence_id"] = value["gold"]["evidence"][1]["evidence_id"]
+        value["gold"]["evidence"].pop()
+        value["gold"]["accepted_field_ids"] = [source["asset_id"]]
+    else:
+        missing = "urn:toy:missing:rejection"
+        value["gold"]["rejected_candidates"] = [{"field_id": missing, "rationale": "Wrong entity"}]
+        value["gold"]["evidence"].append(
+            {**source, "evidence_id": "urn:toy:rejection:evidence", "asset_id": missing}
+        )
+    with pytest.raises(ValueError, match=match) as error:
+        cases_from_jsonl(text([value]), snapshot, universe, source="review.jsonl")
+    assert "review.jsonl:line=1: case=urn:toy:case:1" in str(error.value)
+
+
+@pytest.mark.parametrize("mutation", ["unknown_attribute", "wrong_value", "missing_metadata"])
+def test_without_original_evidence_metadata_content_is_still_checked(mutation):
+    from bindofell.benchmark.io import cases_from_jsonl
+
+    snapshot, universe, value = original_evidence_inputs()
+    data = snapshot.model_dump(mode="json")
+    for asset in data["fields"]:
+        asset["evidence"] = []
+        if mutation == "missing_metadata":
+            asset["description"] = None
+    from bindofell.domain.models import EstateSnapshot
+
+    snapshot = EstateSnapshot.model_validate(data)
+    if mutation == "unknown_attribute":
+        value["gold"]["evidence"][0]["attribute"] = "invented_attribute"
+    elif mutation == "wrong_value":
+        value["gold"]["evidence"][0]["value"] = "Invented source meaning"
+    with pytest.raises(ValueError, match="metadata"):
+        cases_from_jsonl(text([value]), snapshot, universe)
+
+
+def test_existing_records_cannot_be_bypassed_by_minting_a_new_evidence_id():
+    from bindofell.benchmark.io import cases_from_jsonl
+
+    snapshot, universe, value = original_evidence_inputs()
+    source = value["gold"]["evidence"][0]
+    source["evidence_id"] = "urn:toy:brand:new"
+    source["value"] = "Invented source meaning"
+    with pytest.raises(ValueError, match="original evidence"):
+        cases_from_jsonl(text([value]), snapshot, universe)
+
+
+def test_original_evidence_can_be_referenced_or_excerpted_with_a_new_id():
+    from bindofell.benchmark.io import cases_from_jsonl
+
+    snapshot, universe, value = original_evidence_inputs()
+    source = value["gold"]["evidence"][0]
+    source["evidence_id"] = "urn:toy:excerpt:1"
+    source["value"] = "authored for tests only."
+    assert cases_from_jsonl(text([value]), snapshot, universe)
+    source["evidence_id"] = "urn:toy:evidence:0"
+    with pytest.raises(ValueError, match="original evidence"):
+        cases_from_jsonl(text([value]), snapshot, universe)
+
+
+def test_independent_decisions_are_context_validated_and_roundtrip_without_erasing_disagreement():
+    from copy import deepcopy
+
+    from bindofell.benchmark.io import cases_from_jsonl, cases_to_jsonl
+
+    from .test_models import mapping_review_payload
+
+    snapshot, universe, original = original_evidence_inputs()
+    value = mapping_review_payload()
+    value["gold"] = deepcopy(original["gold"])
+    value["adjudication"]["mapping"] = deepcopy(value["gold"])
+    for annotation, accepted in zip(
+        value["annotations"], value["gold"]["accepted_field_ids"], strict=True
+    ):
+        annotation["mapping"] = deepcopy(value["gold"])
+        annotation["mapping"]["accepted_field_ids"] = [accepted]
+    cases = cases_from_jsonl(text([value]), snapshot, universe)
+    restored = cases_from_jsonl(cases_to_jsonl(cases), snapshot, universe)
+    assert restored[0].annotations[0].mapping.accepted_field_ids != (
+        restored[0].annotations[1].mapping.accepted_field_ids
+    )
+    value["annotations"][0]["mapping"]["evidence"][0]["source_digest"] = "b" * 64
+    with pytest.raises(ValueError, match="annotation.*digest"):
+        cases_from_jsonl(text([value]), snapshot, universe)

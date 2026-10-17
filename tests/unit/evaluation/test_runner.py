@@ -79,8 +79,8 @@ def test_runner_preserves_candidates_evidence_and_static_provenance():
     assert not report.excluded_case_ids
     for record, supplied in zip(report.results, rankings, strict=True):
         assert record.ranking == supplied
-        assert record.case.case_version == "toy-cases/1"
-        assert record.case.gold.gold_version == "toy-gold/1"
+        assert record.case.case_version == "toy-cases/2"
+        assert record.case.gold.gold_version == "toy-gold/2"
         for predicted, original in zip(record.ranking.candidates, supplied.candidates, strict=True):
             assert predicted.raw_score == original.raw_score
             assert predicted.evidence == original.evidence
@@ -276,3 +276,12 @@ def test_rankings_roundtrip_duplicate_cases_and_empty_evaluation():
     assert value["direct"]["support"] == 0
     assert value["direct"]["top1"] is None
     assert value["provenance"]["annotation_grade"] is None
+
+
+def test_runner_rejects_gold_evidence_with_a_foreign_source_digest():
+    _, _, cases, _, _ = inputs()
+    value = cases[0].model_dump(mode="json")
+    value["gold"]["evidence"][0]["source_digest"] = "b" * 64
+    cases = (EvaluationCase.model_validate(value), *cases[1:])
+    with pytest.raises(ValueError, match="source evidence.*digest"):
+        evaluate(cases=cases)

@@ -12,3 +12,9 @@ B is empty and C has tied plausible fields. It is not output from retrieval or
 classification. Candidate evidence references the same synthetic metadata.
 Independent-role records created in unit tests exercise validation only and
 are never released as independently validated gold.
+
+Case/gold corpus revision 2 corrects the initial generic source excerpts to the
+actual synthetic descriptions in the unchanged toy snapshot. Candidate excerpts
+were corrected likewise. No original source evidence records are attached to
+this generic snapshot; contextual validation checks its actual metadata content.
+Unit tests attach explicit originals to exercise locator/attribute/ID integrity.

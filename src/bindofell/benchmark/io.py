@@ -9,8 +9,8 @@ from typing import Literal, NoReturn, Self, cast
 
 from pydantic import Field, model_validator
 
-from bindofell.benchmark.models import EvaluationCase, unique_sorted
-from bindofell.domain.models import Attributes, Contract, EstateSnapshot, Identifier, Text
+from bindofell.benchmark.models import EvaluationCase, GroundTruthMapping, unique_sorted
+from bindofell.domain.models import Attributes, Contract, EstateSnapshot, Evidence, Identifier, Text
 
 
 def canonical_json(value: object) -> str:
@@ -142,6 +142,101 @@ def make_universe(
     return universe
 
 
+def _source_value_matches(claim: object, original: object, *, allow_excerpt: bool) -> bool:
+    if canonical_json(claim) == canonical_json(original):
+        return True
+    return (
+        allow_excerpt
+        and isinstance(claim, str)
+        and isinstance(original, str)
+        and bool(claim.strip())
+        and claim in original
+    )
+
+
+def _validate_source_evidence(evidence: Evidence, snapshot: EstateSnapshot) -> None:
+    assets: dict[str, Contract] = {
+        snapshot.snapshot_id: snapshot,
+        snapshot.dataset.dataset_id: snapshot.dataset,
+        **{t.table_id: t for t in snapshot.tables},
+        **{f.field_id: f for f in snapshot.fields},
+        **{r.relationship_id: r for r in snapshot.relationships},
+    }
+    if evidence.asset_id not in assets:
+        raise ValueError(f"source evidence {evidence.evidence_id}: unknown snapshot asset")
+    if evidence.source_digest not in {d.sha256 for d in snapshot.source_digests}:
+        raise ValueError(
+            f"source evidence {evidence.evidence_id}: digest absent from snapshot sources"
+        )
+    originals = tuple(
+        e
+        for asset in (*snapshot.tables, *snapshot.fields, *snapshot.relationships)
+        for e in asset.evidence
+        if e.kind == "source"
+    )
+    same_id = tuple(e for e in originals if e.evidence_id == evidence.evidence_id)
+    serialized = canonical_json(evidence.model_dump(mode="json"))
+    if same_id and any(canonical_json(e.model_dump(mode="json")) != serialized for e in same_id):
+        raise ValueError(f"source evidence {evidence.evidence_id}: modified original evidence ID")
+    attached = tuple(e for e in originals if e.asset_id == evidence.asset_id)
+    if attached:
+        matches = tuple(
+            e
+            for e in attached
+            if (
+                e.source_digest == evidence.source_digest
+                and e.source_locator == evidence.source_locator
+                and e.attribute == evidence.attribute
+            )
+        )
+        if not any(
+            _source_value_matches(evidence.value, e.value, allow_excerpt=not same_id)
+            for e in matches
+        ):
+            raise ValueError(
+                f"source evidence {evidence.evidence_id}: locator/attribute/value "
+                "does not match original evidence"
+            )
+        return
+    # Generic snapshots may have no attached originals. Verify actual metadata;
+    # a manifest digest alone cannot ground a made-up attribute or source value.
+    metadata = assets[evidence.asset_id].model_dump(mode="json")
+    attributes = cast(dict[str, object], metadata.get("attributes", {}))
+    if evidence.attribute in attributes:
+        original = attributes[evidence.attribute]
+    elif evidence.attribute in metadata:
+        original = metadata[evidence.attribute]
+    else:
+        raise ValueError(
+            f"source evidence {evidence.evidence_id}: unknown source metadata attribute"
+        )
+    if not isinstance(original, (str, int, float, bool, type(None))) or not _source_value_matches(
+        evidence.value, original, allow_excerpt=True
+    ):
+        raise ValueError(
+            f"source evidence {evidence.evidence_id}: value contradicts source metadata"
+        )
+
+
+def _validate_mapping(
+    mapping: GroundTruthMapping,
+    snapshot: EstateSnapshot,
+    universe: EligibleUniverse,
+) -> None:
+    targets = set((*mapping.accepted_field_ids, *mapping.plausible_field_ids))
+    fields = {f.field_id for f in snapshot.fields}
+    rejected = {r.field_id for r in mapping.rejected_candidates}
+    absent = (targets | rejected) - fields
+    ineligible = targets - set(universe.field_ids)
+    if absent:
+        raise ValueError(f"gold fields outside snapshot: {sorted(absent)}")
+    if ineligible:
+        raise ValueError(f"ineligible gold fields: {sorted(ineligible)}")
+    for evidence in mapping.evidence:
+        if evidence.kind == "source":
+            _validate_source_evidence(evidence, snapshot)
+
+
 def validate_case(
     case: EvaluationCase,
     snapshot: EstateSnapshot,
@@ -149,13 +244,19 @@ def validate_case(
 ) -> None:
     if case.snapshot_id != snapshot.snapshot_id:
         raise ValueError(f"case {case.case_id}: wrong snapshot {case.snapshot_id}")
-    targets = set((*case.gold.accepted_field_ids, *case.gold.plausible_field_ids))
-    absent = targets - {f.field_id for f in snapshot.fields}
-    ineligible = targets - set(universe.field_ids)
-    if absent:
-        raise ValueError(f"case {case.case_id}: gold fields outside snapshot: {sorted(absent)}")
-    if ineligible:
-        raise ValueError(f"case {case.case_id}: ineligible gold fields: {sorted(ineligible)}")
+    mappings = [("gold", case.gold)]
+    mappings.extend(
+        (f"annotation {a.annotator.person_id}", a.mapping)
+        for a in case.annotations
+        if a.mapping is not None
+    )
+    if case.adjudication is not None and case.adjudication.mapping is not None:
+        mappings.append(("adjudication", case.adjudication.mapping))
+    for label, mapping in mappings:
+        try:
+            _validate_mapping(mapping, snapshot, universe)
+        except ValueError as exc:
+            raise ValueError(f"case {case.case_id} {label}: {exc}") from exc
 
 
 def validate_cases(

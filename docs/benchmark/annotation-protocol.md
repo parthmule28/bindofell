@@ -55,6 +55,12 @@ its original locator, attribute/value, asset ID and source digest. Every accepte
 plausible or rejected field needs source evidence attributed to that exact asset.
 For B, cite the inspected scope even when no plausible rejected field exists.
 Record rejections in `rejected_candidates`; do not use rank or score as a reason.
+Source evidence must resolve to snapshot assets and manifest digests. Reuse
+available original evidence records unchanged; a new ID for a verbatim excerpt
+must retain its original asset/digest/locator/attribute. When no original record
+exists, cite an attribute/value actually present in the snapshot. Context checks
+also cover retained annotator decisions, so disagreement history cannot carry
+fabricated source claims unnoticed.
 
 Multiple accepted A IDs mean **any one is a correct direct answer**. If multiple
 fields must be combined simultaneously, retain the case for a future derived
