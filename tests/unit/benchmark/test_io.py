@@ -137,3 +137,21 @@ def test_unresolved_cases_can_be_archived_but_not_scored():
     cases = cases_from_jsonl(text(values), snapshot, universe)
     with pytest.raises(ValueError, match="unresolved.*urn:toy:case:1"):
         validate_cases(cases, snapshot, universe, require_resolved=True)
+
+
+def test_jsonl_roundtrip_preserves_unicode_line_separator_characters():
+    from bindofell.benchmark.io import cases_from_jsonl, cases_to_jsonl
+
+    snapshot, universe = inputs()
+    values = records()
+    values[0]["requirement"]["text"] = "Original\u0085wording\u2028with\u2029separators"
+    cases = cases_from_jsonl(text(values), snapshot, universe)
+    assert cases_from_jsonl(cases_to_jsonl(cases), snapshot, universe) == cases
+
+
+def test_all_fields_policy_cannot_claim_a_subset():
+    from bindofell.benchmark.io import make_universe
+
+    snapshot, _ = inputs()
+    with pytest.raises(ValueError, match="all-physical-fields.*complete"):
+        make_universe(snapshot, field_ids=(snapshot.fields[0].field_id,))

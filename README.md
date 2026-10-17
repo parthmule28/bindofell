@@ -33,14 +33,14 @@ uv run python scripts/fetch_omop_metadata.py --verify-only
 
 The default `.data/omop-v5.5.0/` output is ignored by Git. Acquisition refuses
 overwrites and checks the release commit and reviewed file hashes. Unit tests
-use only synthetic fixtures and block network connections. Ranking and `bindofell search/evaluate` remain deferred to later work packages.
+use only synthetic fixtures and block network connections. Ranking and
+`bindofell search/evaluate` remain deferred to later work packages.
 
 See [B01 formats and usage](docs/usage/b01-metadata.md), the
 [core contracts](docs/design/0001-bindofell-core.md), the
 [benchmark specification](docs/design/0002-benchmark-v0.1.md),
 [source assessment](docs/datasets/source-assessment.md) and the
 [implementation plan](docs/plans/b00-b04-implementation.md).
-
 
 ## B02: benchmark and evaluation foundation
 

@@ -231,3 +231,14 @@ def test_absent_rule_means_not_evaluated_and_complete_decisions_required():
     all_decisions = [decision(c, "DIRECT") for c in cases]
     with pytest.raises(ValueError, match="duplicate"):
         classification_metrics(cases, rule=rule(), decisions=all_decisions + all_decisions[:1])
+
+
+def test_coverage_rejects_snapshot_mismatch_and_duplicate_case_ids():
+    from bindofell.evaluation.metrics import coverage_audit
+
+    estate, universe, cases = inputs()
+    wrong_snapshot = cases[0].model_copy(update={"snapshot_id": "urn:toy:other"})
+    with pytest.raises(ValueError, match="snapshot"):
+        coverage_audit((wrong_snapshot,), estate, universe)
+    with pytest.raises(ValueError, match="duplicate"):
+        coverage_audit((cases[0], cases[0]), estate, universe)

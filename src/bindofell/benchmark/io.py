@@ -58,14 +58,16 @@ def strict_object(text: str) -> dict[str, object]:
     canonical_json(result).encode("utf-8", errors="strict")
     if result.get("schema_version") != "1.0":
         raise ValueError(
-            f"case={result.get('case_id', '<unknown>')}: "
-            "unsupported schema_version (expected 1.0)"
+            f"case={result.get('case_id', '<unknown>')}: unsupported schema_version (expected 1.0)"
         )
     return result
 
 
 def jsonl_objects(text: str, source: str) -> Iterator[tuple[int, dict[str, object]]]:
-    for line, data in enumerate(text.splitlines(), 1):
+    lines = text.split("\n")
+    if lines[-1] == "":
+        lines.pop()
+    for line, data in enumerate(lines, 1):
         try:
             if not data.strip():
                 raise ValueError("blank JSONL record")
@@ -105,9 +107,15 @@ class EligibleUniverse(Contract):
 def validate_universe(universe: EligibleUniverse, snapshot: EstateSnapshot) -> None:
     if universe.snapshot_id != snapshot.snapshot_id:
         raise ValueError("universe snapshot differs from loaded snapshot")
-    unknown = set(universe.field_ids) - {f.field_id for f in snapshot.fields}
+    all_fields = {f.field_id for f in snapshot.fields}
+    unknown = set(universe.field_ids) - all_fields
     if unknown:
         raise ValueError(f"universe fields outside snapshot: {sorted(unknown)}")
+    if (
+        universe.rule_id == "urn:bindofell:eligibility:all-physical-fields"
+        and set(universe.field_ids) != all_fields
+    ):
+        raise ValueError("all-physical-fields policy requires the complete snapshot field set")
 
 
 def make_universe(

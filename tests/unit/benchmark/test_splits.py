@@ -98,3 +98,13 @@ def test_manifest_roundtrip_and_validation_on_reload():
             manifest_from_json(json.dumps(value), fixture)
     with pytest.raises(ValueError, match="duplicate JSON key"):
         manifest_from_json(data.replace('"seed":', '"seed":1,"seed":'), fixture)
+
+
+def test_manifest_reload_requires_explicit_algorithm_version():
+    from bindofell.benchmark.splits import assign_splits, manifest_from_json, manifest_to_json
+
+    fixture = cases()
+    value = json.loads(manifest_to_json(assign_splits(fixture, seed=17)))
+    del value["algorithm_version"]
+    with pytest.raises(ValueError, match="algorithm_version"):
+        manifest_from_json(json.dumps(value), fixture)

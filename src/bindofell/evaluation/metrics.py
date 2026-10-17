@@ -99,7 +99,12 @@ def coverage_audit(
 ) -> CoverageAudit:
     """Audit all original A cases; any invalid alternative is an integrity issue."""
     validate_universe(universe, snapshot)
-    direct = tuple(sorted((c for c in cases if c.task_label == "direct"), key=lambda c: c.case_id))
+    ordered = tuple(sorted(cases, key=lambda c: c.case_id))
+    unique_sorted(tuple(c.case_id for c in ordered), "coverage case ID")
+    for case in ordered:
+        if case.snapshot_id != snapshot.snapshot_id:
+            raise ValueError(f"coverage case {case.case_id}: wrong snapshot {case.snapshot_id}")
+    direct = tuple(c for c in ordered if c.task_label == "direct")
     present = {f.field_id for f in snapshot.fields}
     eligible = set(universe.field_ids)
     issues: list[CoverageIssue] = []

@@ -34,7 +34,7 @@ class PartitionCounts(Contract):
 
 class SplitManifest(Contract):
     schema_version: Literal["1.0"] = "1.0"
-    algorithm_version: Literal["bindofell.grouped-stratified-greedy/1"] = ALGORITHM
+    algorithm_version: Literal["bindofell.grouped-stratified-greedy/1"]
     seed: StrictInt
     cases_digest: Digest
     assignments: tuple[SplitAssignment, ...]
@@ -126,6 +126,7 @@ def assign_splits(cases: Iterable[EvaluationCase], *, seed: int) -> SplitManifes
         )
     final = tuple(sorted(assignments, key=lambda a: a.case_id))
     return SplitManifest(
+        algorithm_version=ALGORITHM,
         seed=seed,
         cases_digest=cases_digest(ordered),
         assignments=final,
