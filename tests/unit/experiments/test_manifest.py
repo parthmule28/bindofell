@@ -25,7 +25,7 @@ def evaluation(top_k=None):
             case_id=c.case_id,
             snapshot_id=c.snapshot_id,
             candidates=index.search(
-                c.requirement.text, requirement_id=c.requirement.requirement_id, top_k=None
+                c.requirement.text, requirement_id=c.requirement.requirement_id, top_k=top_k
             ),
         )
         for c in cases
@@ -128,6 +128,7 @@ def test_manifest_cannot_label_a_truncated_ranking_as_unrestricted_mrr(tmp_path)
     from bindofell.experiments.manifest import CaseLatency, build_manifest
 
     index, result = evaluation(top_k=1)
+    assert all(len(r.ranking.candidates) == 1 for r in result.results)
     with pytest.raises(ValueError, match="full.*ranking"):
         build_manifest(
             result,

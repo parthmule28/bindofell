@@ -165,7 +165,7 @@ def build_manifest(
     if started_at.tzinfo is None or started_at.utcoffset() is None:
         raise ValueError("run timestamp requires an explicit timezone")
     for record in result.results:
-        expected = (
+        expected: set[str] = (
             set(index.universe.field_ids) if tokenize(record.case.requirement.text) else set()
         )
         if {c.field_id for c in record.ranking.candidates} != expected:
