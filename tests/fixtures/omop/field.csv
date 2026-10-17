@@ -1,0 +1,4 @@
+cdmTableName,cdmFieldName,isRequired,cdmDatatype,userGuidance,etlConventions,isPrimaryKey,isForeignKey,fkTableName,fkFieldName,fkDomain,fkClass,extraSource
+entity,id,true,integer,,,true,false,NA,NA,NA,NA,field-extra
+entity,code_ref,,integer,Synthetic reference,,false,true,CODES,ID,NA,NA,
+codes,id,true,integer,,,true,false,NA,NA,NA,NA,

@@ -1,0 +1,42 @@
+{
+  "schema_version": "1.0",
+  "snapshot_id": "urn:synthetic:snapshot:one",
+  "dataset": {
+    "dataset_id": "urn:synthetic:dataset",
+    "namespace": "synthetic",
+    "name": "Synthetic",
+    "version": "1",
+    "revision": "fixture",
+    "source_uri": "https://example.invalid/synthetic",
+    "license": "synthetic"
+  },
+  "source_digests": [
+    {
+      "path": "fixture.csv",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  ],
+  "tables": [
+    {
+      "table_id": "urn:bindofell:table:synthetic/catalog=/schema=/table=Entity",
+      "address": {
+        "namespace": "synthetic",
+        "table": "Entity"
+      },
+      "name": "Entity"
+    }
+  ],
+  "fields": [
+    {
+      "field_id": "urn:bindofell:field:synthetic/catalog=/schema=/table=Entity/column=key",
+      "table_id": "urn:bindofell:table:synthetic/catalog=/schema=/table=Entity",
+      "address": {
+        "namespace": "synthetic",
+        "table": "Entity",
+        "column": "key"
+      },
+      "name": "key"
+    }
+  ],
+  "relationships": []
+}
