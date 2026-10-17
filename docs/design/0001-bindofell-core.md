@@ -11,7 +11,7 @@ The domain accepts any naming convention. It preserves source table and field la
 ## Identity and snapshot rules
 
 - `DatasetId`, `TableId`, `FieldId`, `RelationshipId`, `RequirementId`, `BindingId`, `CaseId`, and `EvidenceId` are opaque, namespaced identifiers. Display labels are never identifiers.
-- A field identity is formed from the source namespace and its complete qualified physical address: namespace, catalog (if present), schema (if present), table, and column. For example, an OMOP field could be represented as `urn:bindofell:field:ohdsi.omop.cdm/PERSON/person_id`. Each segment is encoded canonically and source case is preserved.
+- A field identity is formed from the source namespace and its complete qualified physical address: namespace, catalog (if present), schema (if present), table, and column. B01 uses explicit optional slots, for example `urn:bindofell:field:ohdsi.omop.cdm/catalog=/schema=CDM/table=person/column=person_id`; absent qualifiers cannot collapse into other segments. Each supplied segment is encoded canonically and source case is preserved. See the [B01 format](../usage/b01-metadata.md#snapshot-format-and-identity).
 - Snapshot version and source file digest are recorded separately from the field address. This lets the same qualified field be compared across estate snapshots while still making every run reproducible. A rename or a distinct source namespace produces a distinct ID.
 - IDs are stable within the selected namespace and address scheme; they do not claim that a field's meaning is unchanged across releases.
 

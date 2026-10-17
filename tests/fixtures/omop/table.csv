@@ -1,0 +1,3 @@
+cdmTableName,schema,isRequired,tableDescription,userGuidance,etlConventions,extraSource
+entity,demo,true,Synthetic entity table,,,table-extra
+codes,demo,true,Synthetic code table,,,
