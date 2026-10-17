@@ -113,7 +113,8 @@ class LexicalIndex:
         )
         if supplied != expected:
             raise ValueError(
-                "documents must exactly match the B01 snapshot/profile and complete eligible universe"
+                "documents must exactly match the B01 snapshot/profile "
+                "and complete eligible universe"
             )
         self.documents = supplied
         self.documents_digest = content_digest(documents_to_jsonl(self.documents))
