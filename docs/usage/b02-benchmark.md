@@ -254,5 +254,9 @@ git diff --check
 
 The [PR workflow](../../.github/workflows/ci.yml) installs locked dependencies,
 then runs offline unit tests with warnings as errors, Ruff and strict Pyright
-on Python 3.11. Test sockets are blocked. It acquires no OMOP source or model
+on Python 3.11. Checkout fetches full history; the whitespace step checks the
+committed PR merge-base-to-head diff using the event's base/head SHAs. Main
+pushes use before/head SHAs, with an empty-tree check on an initial push.
+Missing commits fail the check; uncommitted changes do not affect it.
+Test sockets are blocked. It acquires no OMOP source or model
 weights. B02 stops at independent PR review before B03.
