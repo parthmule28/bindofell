@@ -23,6 +23,7 @@ from bindofell.retrieval.lexical import TOKENIZER_ID, LexicalIndex, tokenize
 
 Seconds = Annotated[float, Field(ge=0, strict=True)]
 Count = Annotated[int, Field(ge=0, strict=True)]
+SplitOrigin = Literal["frozen", "generated"]
 
 
 class GitState(Contract):
@@ -66,6 +67,8 @@ class RunStatic(Contract):
     serializer_id: Text
     tokenizer_id: Text
     omitted_channels: tuple[OmissionCount, ...]
+    split_origin: SplitOrigin
+    exploratory: StrictBool
     ranking_depth: Literal["full-universe"] = "full-universe"
     mrr_label: Literal["MRR"] = "MRR"
     git: GitState
@@ -161,6 +164,7 @@ def build_manifest(
     git_root: Path | None,
     lock_path: Path | None,
     host: Attributes | None = None,
+    split_origin: SplitOrigin = "frozen",
 ) -> RunManifest:
     if started_at.tzinfo is None or started_at.utcoffset() is None:
         raise ValueError("run timestamp requires an explicit timezone")
@@ -179,6 +183,8 @@ def build_manifest(
     profile = str(index.method.config["profile"])
     static = RunStatic(
         provenance=result.provenance,
+        split_origin=split_origin,
+        exploratory=split_origin == "generated" or result.provenance.partition is None,
         documents_digest=index.documents_digest,
         tokens_digest=index.tokens_digest,
         results_digest=content_digest(result_to_json(result)),

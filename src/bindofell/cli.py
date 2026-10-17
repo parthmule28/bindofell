@@ -11,11 +11,13 @@ from bindofell.benchmark.io import (
     EligibleUniverse,
     canonical_json,
     content_digest,
+    load_cases,
     make_universe,
     read_utf8,
     strict_object,
     validate_universe,
 )
+from bindofell.benchmark.splits import Partition, assign_splits, manifest_from_json
 from bindofell.domain.models import (
     BindingCandidate,
     Contract,
@@ -27,6 +29,7 @@ from bindofell.domain.models import (
     Text,
 )
 from bindofell.evaluation.contracts import MethodSpec
+from bindofell.experiments.run import evaluate_experiment, write_experiment
 from bindofell.metadata.loader import load_snapshot
 from bindofell.retrieval.documents import PROFILES, Profile, SearchDocument
 from bindofell.retrieval.lexical import TOKENIZER_ID, LexicalIndex
@@ -118,6 +121,50 @@ def _search(args: argparse.Namespace) -> None:
         _write_new_file(args.output, serialized)
 
 
+def _source_context() -> tuple[Path | None, Path | None]:
+    source = Path(__file__).resolve()
+    root = source.parents[2]
+    if (root / "src/bindofell/cli.py").resolve() != source:
+        return None, None  # Installed wheel: do not attribute an unrelated working directory.
+    return root, root / "uv.lock"
+
+
+def _evaluate(args: argparse.Namespace) -> None:
+    output: Path = args.output_dir
+    if output.exists() or output.is_symlink():
+        raise FileExistsError(f"experiment output already exists: {output}")
+    snapshot = load_snapshot(args.estate)
+    universe = load_universe(args.universe, snapshot)
+    cases = load_cases(args.cases, snapshot, universe)
+    splits = (
+        manifest_from_json(read_utf8(args.split_manifest), cases)
+        if args.split_manifest is not None
+        else assign_splits(cases, seed=args.seed)
+    )
+    git_root, lock_path = _source_context()
+    result, manifest = evaluate_experiment(
+        snapshot,
+        cases,
+        universe,
+        profile=cast(Profile, args.profile),
+        split_manifest=splits,
+        partition=cast(Partition, args.split) if args.split != "all" else None,
+        split_origin="frozen" if args.split_manifest is not None else "generated",
+        git_root=git_root,
+        lock_path=lock_path,
+    )
+    write_experiment(output, result, manifest)
+    sys.stdout.write(
+        canonical_json(
+            {
+                "direct": result.direct.model_dump(mode="json"),
+                "classification": result.classification.status,
+                "static_digest": manifest.static_digest,
+            }
+        )
+    )
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="bindofell",
@@ -133,6 +180,16 @@ def _parser() -> argparse.ArgumentParser:
     search.add_argument("--top-k", type=_positive, default=5)
     search.add_argument("--universe", type=Path, help="frozen eligible-universe JSON manifest")
     search.add_argument("--output", type=Path, help="new JSON file; otherwise print canonical JSON")
+    evaluate = commands.add_parser("evaluate", help="evaluate full BM25 rankings with B02 metrics")
+    evaluate.add_argument("--estate", type=Path, required=True)
+    evaluate.add_argument("--cases", type=Path, required=True)
+    evaluate.add_argument("--split", choices=("train", "validation", "test", "all"), required=True)
+    evaluate.add_argument("--profile", choices=tuple(PROFILES), default="names")
+    evaluate.add_argument("--universe", type=Path)
+    policy = evaluate.add_mutually_exclusive_group(required=True)
+    policy.add_argument("--split-manifest", type=Path, help="replay a frozen B02 split manifest")
+    policy.add_argument("--seed", type=int, help="generate and record exploratory grouped splits")
+    evaluate.add_argument("--output-dir", type=Path, required=True, help="new experiment directory")
     return parser
 
 
@@ -140,7 +197,10 @@ def main(argv: list[str] | None = None) -> int:
     parser = _parser()
     args = parser.parse_args(argv)
     try:
-        _search(args)
+        if args.command == "search":
+            _search(args)
+        else:
+            _evaluate(args)
         return 0
     except (ValueError, OSError) as exc:
         print(f"bindofell: error: {exc}", file=sys.stderr)
