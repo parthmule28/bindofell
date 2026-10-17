@@ -1,0 +1,128 @@
+{
+  "schema_version": "1.0",
+  "snapshot_id": "urn:toy:snapshot:1",
+  "dataset": {
+    "dataset_id": "urn:toy:dataset",
+    "namespace": "toy",
+    "name": "Synthetic toy estate",
+    "version": "1",
+    "revision": "synthetic-fixture/1",
+    "source_uri": "synthetic://toy",
+    "license": "synthetic"
+  },
+  "source_digests": [
+    {
+      "path": "synthetic://toy",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  ],
+  "tables": [
+    {
+      "table_id": "urn:bindofell:table:toy/catalog=/schema=/table=Alpha",
+      "address": {
+        "namespace": "toy",
+        "table": "Alpha"
+      },
+      "name": "Alpha"
+    },
+    {
+      "table_id": "urn:bindofell:table:toy/catalog=/schema=/table=Beta",
+      "address": {
+        "namespace": "toy",
+        "table": "Beta"
+      },
+      "name": "Beta"
+    }
+  ],
+  "fields": [
+    {
+      "field_id": "urn:bindofell:field:toy/catalog=/schema=/table=Alpha/column=key",
+      "table_id": "urn:bindofell:table:toy/catalog=/schema=/table=Alpha",
+      "address": {
+        "namespace": "toy",
+        "table": "Alpha",
+        "column": "key"
+      },
+      "name": "key",
+      "description": "Synthetic Alpha key; authored for tests only."
+    },
+    {
+      "field_id": "urn:bindofell:field:toy/catalog=/schema=/table=Alpha/column=start",
+      "table_id": "urn:bindofell:table:toy/catalog=/schema=/table=Alpha",
+      "address": {
+        "namespace": "toy",
+        "table": "Alpha",
+        "column": "start"
+      },
+      "name": "start",
+      "description": "Synthetic Alpha start; authored for tests only."
+    },
+    {
+      "field_id": "urn:bindofell:field:toy/catalog=/schema=/table=Alpha/column=end",
+      "table_id": "urn:bindofell:table:toy/catalog=/schema=/table=Alpha",
+      "address": {
+        "namespace": "toy",
+        "table": "Alpha",
+        "column": "end"
+      },
+      "name": "end",
+      "description": "Synthetic Alpha end; authored for tests only."
+    },
+    {
+      "field_id": "urn:bindofell:field:toy/catalog=/schema=/table=Alpha/column=value",
+      "table_id": "urn:bindofell:table:toy/catalog=/schema=/table=Alpha",
+      "address": {
+        "namespace": "toy",
+        "table": "Alpha",
+        "column": "value"
+      },
+      "name": "value",
+      "description": "Synthetic Alpha value; authored for tests only."
+    },
+    {
+      "field_id": "urn:bindofell:field:toy/catalog=/schema=/table=Beta/column=key",
+      "table_id": "urn:bindofell:table:toy/catalog=/schema=/table=Beta",
+      "address": {
+        "namespace": "toy",
+        "table": "Beta",
+        "column": "key"
+      },
+      "name": "key",
+      "description": "Synthetic Beta key; authored for tests only."
+    },
+    {
+      "field_id": "urn:bindofell:field:toy/catalog=/schema=/table=Beta/column=start",
+      "table_id": "urn:bindofell:table:toy/catalog=/schema=/table=Beta",
+      "address": {
+        "namespace": "toy",
+        "table": "Beta",
+        "column": "start"
+      },
+      "name": "start",
+      "description": "Synthetic Beta start; authored for tests only."
+    },
+    {
+      "field_id": "urn:bindofell:field:toy/catalog=/schema=/table=Beta/column=end",
+      "table_id": "urn:bindofell:table:toy/catalog=/schema=/table=Beta",
+      "address": {
+        "namespace": "toy",
+        "table": "Beta",
+        "column": "end"
+      },
+      "name": "end",
+      "description": "Synthetic Beta end; authored for tests only."
+    },
+    {
+      "field_id": "urn:bindofell:field:toy/catalog=/schema=/table=Beta/column=value",
+      "table_id": "urn:bindofell:table:toy/catalog=/schema=/table=Beta",
+      "address": {
+        "namespace": "toy",
+        "table": "Beta",
+        "column": "value"
+      },
+      "name": "value",
+      "description": "Synthetic Beta value; authored for tests only."
+    }
+  ],
+  "relationships": []
+}
