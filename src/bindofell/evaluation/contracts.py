@@ -4,13 +4,17 @@ from typing import Annotated, Literal, Self
 
 from pydantic import Field, model_validator
 
-from bindofell.benchmark.models import unique_sorted
+from bindofell.benchmark.io import EligibleUniverse
+from bindofell.benchmark.models import AnnotationGrade, EvaluationCase, TaskLabel, unique_sorted
+from bindofell.benchmark.splits import Partition, SplitManifest
 from bindofell.domain.models import (
     Attributes,
     BindingCandidate,
     Contract,
+    Digest,
     Evidence,
     Identifier,
+    SourceDigest,
     Text,
 )
 
@@ -112,3 +116,64 @@ class ClassificationMetrics(Contract):
     support: Count
     confusion: tuple[ConfusionRow, ...] = ()
     classes: tuple[ClassMetrics, ...] = ()
+
+
+class MethodSpec(Contract):
+    method_id: Text
+    version: Text
+    config: Attributes = Field(default_factory=dict)
+    indexed_field_ids: tuple[Identifier, ...]
+    universe_digest: Digest
+
+    @model_validator(mode="after")
+    def identities(self) -> Self:
+        object.__setattr__(
+            self, "indexed_field_ids", unique_sorted(self.indexed_field_ids, "indexed field ID")
+        )
+        return self
+
+
+class LabelSupport(Contract):
+    label: TaskLabel
+    support: Count
+
+
+class StaticProvenance(Contract):
+    """Static B02 inputs only; B03 owns runtime observations and full run manifests."""
+
+    schema_version: Literal["1.0"] = "1.0"
+    snapshot_id: Identifier
+    snapshot_digest: Digest
+    source_digests: tuple[SourceDigest, ...]
+    dataset_id: Identifier
+    dataset_version: Text
+    source_revision: Text
+    universe: EligibleUniverse
+    universe_digest: Digest
+    cases_digest: Digest
+    split_manifest: SplitManifest
+    split_manifest_digest: Digest
+    method: MethodSpec
+    annotation_grade: AnnotationGrade | None
+    partition: Partition | None
+
+
+class CaseEvaluation(Contract):
+    schema_version: Literal["1.0"] = "1.0"
+    case: EvaluationCase
+    ranking: CaseRanking
+    first_matching_rank: Annotated[int, Field(gt=0, strict=True)] | None
+    outcome: OutcomeDecision | None
+
+
+class EvaluationResult(Contract):
+    schema_version: Literal["1.0"] = "1.0"
+    provenance: StaticProvenance
+    original_case_ids: tuple[Identifier, ...]
+    included_case_ids: tuple[Identifier, ...]
+    excluded_case_ids: tuple[Identifier, ...] = ()
+    label_supports: tuple[LabelSupport, ...]
+    direct: DirectMetrics
+    coverage: CoverageAudit
+    classification: ClassificationMetrics
+    results: tuple[CaseEvaluation, ...]
