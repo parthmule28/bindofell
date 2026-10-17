@@ -159,3 +159,44 @@ def test_manifest_timestamp_requires_an_explicit_timezone():
             git_root=None,
             lock_path=None,
         )
+
+
+@pytest.mark.parametrize("partial", [{"revision": "a" * 40}, {"dirty": False}])
+def test_unavailable_git_never_carries_partial_guessed_values(partial):
+    from bindofell.experiments.manifest import GitState
+
+    with pytest.raises(ValidationError, match="Git"):
+        GitState(status="unavailable", **partial)
+
+
+def test_artifact_publication_rejects_a_report_from_another_ranking(tmp_path):
+    from bindofell.experiments.run import write_experiment
+
+    run = manifest(tmp_path)
+    _, truncated = evaluation(top_k=1)
+    output = tmp_path / "mismatch"
+    with pytest.raises(ValueError, match="manifest.*result"):
+        write_experiment(output, truncated, run)
+    assert not output.exists()
+
+
+def test_publication_io_failure_cleans_only_its_new_artifacts(tmp_path, monkeypatch):
+    import os
+
+    from bindofell.experiments.run import write_experiment
+
+    run = manifest(tmp_path)
+    _, result = evaluation()
+    real_link = os.link
+
+    def fail_on_second_file(source, destination):
+        if Path(destination).name == "cases.jsonl":
+            raise OSError("synthetic disk error")
+        return real_link(source, destination)
+
+    monkeypatch.setattr(os, "link", fail_on_second_file)
+    output = tmp_path / "failed"
+    with pytest.raises(OSError, match="synthetic disk error"):
+        write_experiment(output, result, run)
+    assert not output.exists()
+    assert not list(tmp_path.glob(".failed.*"))

@@ -33,7 +33,12 @@ class GitState(Contract):
 
     @model_validator(mode="after")
     def availability(self) -> Self:
-        if (self.status == "available") != (self.revision is not None and self.dirty is not None):
+        valid = (
+            (self.revision is not None and self.dirty is not None)
+            if self.status == "available"
+            else (self.revision is None and self.dirty is None)
+        )
+        if not valid:
             raise ValueError("Git availability must match revision and dirty-state observations")
         return self
 

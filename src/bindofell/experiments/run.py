@@ -7,7 +7,7 @@ from collections.abc import Iterable
 from datetime import UTC, datetime
 from pathlib import Path
 
-from bindofell.benchmark.io import EligibleUniverse, canonical_json, validate_cases
+from bindofell.benchmark.io import EligibleUniverse, canonical_json, content_digest, validate_cases
 from bindofell.benchmark.models import EvaluationCase
 from bindofell.benchmark.splits import Partition, SplitManifest, manifest_to_json, validate_manifest
 from bindofell.domain.models import EstateSnapshot
@@ -102,8 +102,14 @@ def write_experiment(output: Path, result: EvaluationResult, manifest: RunManife
     """
     if output.exists() or output.is_symlink():
         raise FileExistsError(f"experiment output already exists: {output}")
+    serialized_result = result_to_json(result)
+    if (
+        manifest.static.results_digest != content_digest(serialized_result)
+        or manifest.static.provenance != result.provenance
+    ):
+        raise ValueError("manifest and evaluation result mismatch")
     artifacts = {
-        "metrics.json": result_to_json(result),
+        "metrics.json": serialized_result,
         "cases.jsonl": case_results_to_jsonl(result),
         "split.json": manifest_to_json(result.provenance.split_manifest),
         "universe.json": canonical_json(result.provenance.universe.model_dump(mode="json")),

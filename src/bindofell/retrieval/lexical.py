@@ -156,6 +156,20 @@ class LexicalIndex:
                 "stemming": "none",
             },
         )
+        sources: dict[str, Evidence] = {}
+        for asset in (*snapshot.tables, *snapshot.fields):
+            for evidence in asset.evidence:
+                if evidence.evidence_id in sources and canonical_json(
+                    sources[evidence.evidence_id].model_dump(mode="json")
+                ) != canonical_json(evidence.model_dump(mode="json")):
+                    raise ValueError(f"conflicting metadata evidence ID: {evidence.evidence_id}")
+                sources[evidence.evidence_id] = evidence
+        self._evidence = {
+            d.field_id: tuple(
+                sources[i] for i in sorted({i for c in d.channels for i in c.evidence_ids})
+            )
+            for d in self.documents
+        }
         self._scorer: _Scorer | None = None
         if any(self.tokens):
             # Typed boundary for bm25s's untyped public index/get_scores interface.
@@ -173,19 +187,6 @@ class LexicalIndex:
                 auto_compile=False,
             )
             self._scorer.index([list(t) for t in self.tokens], show_progress=False)
-        sources = {
-            e.evidence_id: e
-            for asset in (*snapshot.tables, *snapshot.fields)
-            for e in asset.evidence
-        }
-        self._evidence = {
-            d.field_id: tuple(
-                sources[i]
-                for i in sorted({i for c in d.channels for i in c.evidence_ids})
-                if i in sources
-            )
-            for d in self.documents
-        }
 
     def search(
         self,

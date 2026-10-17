@@ -187,3 +187,14 @@ def test_b01_channel_evidence_and_frozen_subset_are_preserved(omop_snapshot):
     source = {e.evidence_id: e for e in result[0].evidence if e.kind == "source"}
     assert channel_ids and set(source) == channel_ids
     assert all(source[i] == original[i] for i in channel_ids)
+
+
+def test_conflicting_evidence_ids_are_rejected_instead_of_rebound(omop_snapshot):
+    from bindofell.domain.models import EstateSnapshot
+
+    value = omop_snapshot.model_dump(mode="json")
+    first, other = value["fields"][:2]
+    source = first["evidence"][0]
+    other["evidence"].append({**source, "asset_id": other["field_id"], "value": "changed"})
+    with pytest.raises(ValueError, match="conflicting.*evidence"):
+        index(EstateSnapshot.model_validate(value), profile="field_descriptions")

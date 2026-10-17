@@ -20,7 +20,7 @@ bindofell = "bindofell.cli:main"
 dev = ["pytest>=8,<10", "ruff>=0.11,<1", "pyright[nodejs]>=1.1.400,<2"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests/unit"]
+testpaths = ["tests/unit", "tests/integration"]
 addopts = "--strict-markers"
 
 [tool.ruff]

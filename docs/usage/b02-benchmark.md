@@ -1,7 +1,8 @@
 # B02 benchmark and supplied-ranking evaluation
 
 B02 supplies offline contracts, validation, grouped splits and metrics. It does
-not run a retriever or infer truth labels from scores. The
+not run a retriever or infer truth labels from scores. [B03](cli.md) composes
+local BM25 with this evaluator. The
 [annotation protocol](../benchmark/annotation-protocol.md) defines human curation
 and the independent validation gate. All committed examples are synthetic and
 marked `provisional_curator`; no real OMOP pilot or expert gold is included.
