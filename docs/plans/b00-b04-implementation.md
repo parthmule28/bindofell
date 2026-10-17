@@ -16,8 +16,8 @@
 - v0.1 is reproducible table-column retrieval and evaluation, not a production semantic layer.
 - Candidate IDs include a namespace and qualified table/column address; a column name alone is never identity.
 - Source metadata is separate from lexical/embedding serialization.
-- Task B (no match) and Task C (needs clarification) have distinct labels, predictions and denominators.
-- Gold is independently curated and adjudicated; SQL references and retriever output are not gold by themselves.
+- Task B (no match) and Task C (needs clarification) have distinct labels and support counts; each class's precision/recall/F1 counts predictions across the full evaluation set.
+- Independently validated gold requires two independent annotations and adjudicator sign-off. Engineering milestones may use synthetic fixtures or explicitly provisional curator-grade cases; SQL references and retriever output are not gold by themselves.
 - Do not commit source data while its redistribution rights are unresolved; fetch locally and record source/revision/checksum.
 - Do not add LangGraph, autonomous agents, graph databases, LLM SQL generation, custom model training, production API server or web UI.
 - Do not set performance targets or claim improvement before measurements exist.
@@ -28,8 +28,16 @@
 - Duplicate qualified field addresses or a missing catalog/schema segment must be rejected before an ambiguous ID enters an estate.
 - Missing descriptions and optional constraints must remain missing rather than be filled with guessed text or naming conventions.
 - Foreign-key metadata with a missing endpoint must fail snapshot validation.
-- Gold IDs outside a snapshot, unresolved annotations, and a case split across leakage groups must not be scored.
-- An empty ranked list, score ties, absent candidates, no-match decisions and clarification decisions must produce deterministic outputs and correct denominators.
+- Gold/plausible IDs outside a snapshot or eligible universe, unresolved annotations, and a case split across leakage groups must not be scored. Fail validation or record an explicit method-independent case exclusion; ineligible gold is not a retrieval miss.
+- Ranking/serialization reproducibility and variable latency/timestamps have separate comparison rules. Empty rankings and score ties must have deterministic rank handling; optional classification metrics must count false positives against either other class.
+
+## Research corpus provenance and versioning
+
+The 50-paper canonical ledger and 23 benchmark records are reported by the planning handoff, not verified counts in this checkout. Neither the PR branch nor the attached workspace contains the research ledger files named in the B00 request (`papers.csv`, `methods_matrix.csv`, `benchmarks.csv`, research README and supporting notes). Do not reconstruct them from memory or create substitute entries.
+
+When the existing research workspace is supplied, reference it through a version-controlled `research/ledger.lock.json` (a planned file, not present in B00). Record the corpus ID/version, canonical repository URL plus full immutable commit and file paths, or an exact exported archive URL/path plus SHA-256; record per-file SHA-256, freeze/retrieval dates, access/redistribution terms and reported versus verified record counts. Include only files actually received and inspected. Retain an external immutable reference if copying the corpus is not authorized.
+
+Repository citations and experiment manifests must identify that corpus version/reference and lock digest. Change the corpus version and lock in a reviewed commit when the evidence freeze changes; dataset snapshots and software versions remain independent. The unresolved handoff is the actual ledger location/export and its immutable revision. Until supplied, mark research provenance unavailable and avoid claims of verified coverage of those 50 papers. After B00 approval, engineering milestones may still proceed with synthetic/provisional inputs without inventing research artifacts.
 
 ---
 
@@ -73,11 +81,11 @@ Do not create a module early unless its owning work package needs it. The `data/
 **Files to create:**
 
 - `pyproject.toml`, `uv.lock`, `src/bindofell/__init__.py` — package metadata, locked environment and entry-point namespace; keep CLI entry point declaration ready but add the command implementation in B03.
-- `src/bindofell/domain/models.py` — Pydantic boundary/domain models: `BusinessRequirement`, `EstateSnapshot`, `Dataset`, `Table`, `PhysicalField`, `Relationship`, `Evidence`, `SemanticBinding`, `DirectBinding`, future `DerivedBinding`, `BindingCandidate`, `EvaluationCase`, and `GroundTruthMapping`.
+- `src/bindofell/domain/models.py` — sole owner of `BusinessRequirement`, `EstateSnapshot`, `Dataset`, `Table`, `PhysicalField`, `Relationship`, `Evidence`, `SemanticBinding`, `DirectBinding` and `BindingCandidate`. A future `DerivedBinding` envelope may preserve an opaque expression reference and input IDs only; no expression parser/execution engine. `EvaluationCase` and `GroundTruthMapping` are owned by B02's `benchmark/models.py` and are not implemented here.
 - `src/bindofell/metadata/loader.py` — versioned JSON read/write and validation for a generic local estate snapshot.
 - `src/bindofell/metadata/adapters/omop.py` — parse the pinned `OMOP_CDMv5.5_Field_Level.csv` and `OMOP_CDMv5.5_Table_Level.csv`; map keys, types, descriptions and relationship metadata without renaming source labels.
 - `src/bindofell/retrieval/documents.py` — deterministic `SearchDocument` plus named metadata channels and versioned serializer profiles.
-- `scripts/fetch_omop_metadata.py` — fetch exact release inputs only after license review; resolve the tag to a full commit, verify source paths, write local files and a source manifest with SHA-256 hashes. Do not check in upstream CSVs by default.
+- `scripts/fetch_omop_metadata.py` — fetch the exact release inputs locally, verify the tag against reviewed commit `ba3dc1b651cc243279052bca3d051485c3ec1136` and source paths, and write a SHA-256 source manifest. Record the package's Apache 2.0 declaration; complete component/notice checks before bundling upstream files. Do not check in CSVs by default.
 - `tests/unit/domain/test_models.py`, `tests/unit/metadata/test_loader.py`, `tests/unit/metadata/test_omop_adapter.py`, `tests/unit/retrieval/test_documents.py` — invalid-input, missing-metadata, identity and deterministic serialization tests.
 - `tests/fixtures/omop/` — tiny synthetic CSV/JSON fixtures with deliberately incomplete optional metadata; do not label them as upstream OMOP rows.
 - Update `docs/design/0001-bindofell-core.md` and `docs/datasets/source-assessment.md` only if implementation discovery reveals a verified contract/source correction; record the importer's actual table/field counts and source hashes in local generated manifests, not invented prose.
@@ -109,19 +117,19 @@ Do not create a module early unless its owning work package needs it. The `data/
 
 **Scope exclusions:** search ranking, actual business gold, external benchmark archives, embeddings, formula execution and API/UI.
 
-**Rollback/review:** if rights remain unresolved, keep adapter and synthetic fixtures but disable public fetch/release workflow and commit no CSV files. Review parsed counts and IDs against source CSV rows before accepting the adapter.
+**Rollback/review:** if selected component terms remain unresolved, keep adapter and synthetic fixtures and exclude that component from redistribution; keep reconstruction scripts and local acquisition subject to applicable terms. Review parsed counts and IDs against source CSV rows before accepting the adapter. The package's Apache 2.0 declaration is established evidence, not an unresolved missing license.
 
 ## B02 — Benchmark and evaluation
 
-**Outcome:** versioned case/gold contracts, leakage-safe split validation, metric calculations and deterministic per-case evaluation records. Real gold annotations are added only after independent human review.
+**Outcome:** versioned case/gold contracts, leakage-safe split validation, metric calculations and canonical per-case records. Synthetic fixtures and a resolved, explicitly provisional curator-grade pilot can support engineering acceptance; independently validated gold is a separate release gate.
 
 **Files to create:**
 
-- `src/bindofell/benchmark/models.py` — case labels, accepted alternatives, evidence, review state and split-group IDs.
+- `src/bindofell/benchmark/models.py` — sole owner of `EvaluationCase`, `GroundTruthMapping`, case labels, annotation grade/review state and split-group identity; import B01 domain contracts rather than redefining them.
 - `src/bindofell/benchmark/io.py` — versioned JSONL import/export and validation.
 - `src/bindofell/benchmark/splits.py` — grouped deterministic train/validation/test split validation and manifest serialization.
-- `src/bindofell/evaluation/contracts.py` — per-case result, run manifest and aggregate metric models.
-- `src/bindofell/evaluation/metrics.py` — Top-1, case Recall@5, MRR, candidate coverage/ceiling, no-match metrics and clarification metrics.
+- `src/bindofell/evaluation/contracts.py` — sole owner of per-case ranking results, optional outcome decisions and aggregate metric records. B03's `experiments/manifest.py` owns the run manifest.
+- `src/bindofell/evaluation/metrics.py` — Top-1, case Recall@5, MRR, candidate-universe coverage audit, and optional no-match/clarification metrics across the full evaluation set, following the benchmark's TP/FP/FN and null-denominator definitions.
 - `src/bindofell/evaluation/runner.py` — evaluate method outputs against a frozen case set and candidate universe.
 - `tests/unit/benchmark/test_models.py`, `test_io.py`, `test_splits.py`, `tests/unit/evaluation/test_metrics.py`, `test_runner.py`.
 - `tests/fixtures/benchmark/toy_estate.json`, `toy_cases.jsonl`, `toy_rankings.jsonl` — fully synthetic fixtures labeled as such.
@@ -135,48 +143,50 @@ Do not create a module early unless its owning work package needs it. The `data/
 4. `test_split_is_deterministic_for_recorded_seed_and_manifest`.
 5. `test_metrics_handle_correct_incorrect_and_empty_rankings`.
 6. `test_metrics_accept_any_of_multiple_gold_alternatives`.
-7. `test_candidate_coverage_counts_absent_gold_separately`.
-8. `test_no_match_and_clarification_metrics_keep_distinct_denominators`.
-9. `test_runner_preserves_case_candidates_evidence_and_raw_scores`.
+7. `test_gold_outside_eligible_universe_fails_or_records_explicit_case_exclusion`, including a partially eligible alternative set; never score it as a miss.
+8. `test_outcome_metrics_count_both_other_classes_as_false_positives`, covering the full A/B/C confusion matrix and false negatives to either other class.
+9. `test_metric_zero_denominators_emit_null_with_counts`, including empty A, no predictions of a class and no true members of a class.
+10. `test_annotation_grade_prevents_mixing_provisional_and_validated_results` and validated-gold release without two independent annotations/adjudicator sign-off.
+11. `test_runner_preserves_case_candidates_evidence_and_raw_scores`.
 
 **Expected behavior and edge cases:**
 
-- Duplicate case IDs, invalid task labels, references outside the snapshot, unresolved annotations and duplicate candidate ranks are rejected.
+- Duplicate case IDs, invalid task labels and duplicate candidate ranks are rejected. Out-of-snapshot/universe references and unresolved cases fail pre-scoring validation or are explicitly excluded before any compared method runs; exclusions retain IDs and reasons.
 - A grouped split never separates related paraphrases/template families. If grouping prevents the requested percentages, save actual partition counts and explain rather than leak.
-- Empty rankings score zero on answerable cases. A correct item below rank five affects MRR but not Recall@5. Any accepted alternative is a direct hit.
-- Task B and Task C are reported separately; reporting a generic abstention cannot replace their metrics.
+- Empty rankings score zero only on eligible answerable cases. A correct item below rank five affects MRR but not Recall@5. Any accepted alternative is a direct hit; universe coverage is a separate eligibility audit.
+- Each optional classification rule must predict every evaluated A/B/C case. Report B and C separately using all three true classes for false positives; no rule means classification not evaluated. A generic abstention cannot replace their metrics.
 
 **Dependencies:** B01 domain/snapshot contracts; no additional runtime dependency expected. Add no sample OMOP labels to tests.
 
 **Verification commands:** `uv run pytest tests/unit/benchmark tests/unit/evaluation -q`; `uv run ruff check`; `uv run pyright`.
 
-**Acceptance criteria:** all requested metrics have explicit formulas and denominators; split validator catches group leakage; absent and multiply acceptable targets behave as specified; outputs preserve case-level predictions and provenance; fixtures are clearly synthetic; no claim of independent annotation is made until humans complete and adjudicate the protocol.
+**Acceptance criteria:** synthetic/provisional fixtures exercise all metric formulas, class confusions and zero denominators; split validator catches group leakage; ineligible gold fails or is explicitly excluded; valid but unretrieved gold and alternative targets score as specified; outputs retain provenance and grade. Independent review is required to release independently validated gold, not to finish the B02 evaluator.
 
 **Documentation:** publish the annotation protocol, gold schema, split manifest format and exact metric formulas. For real annotations, record actual annotator roles/qualifications and unresolved disagreements.
 
 **Scope exclusions:** source SQL auto-labeling, generated “independent” gold, model training, threshold selection on test, statistical performance targets.
 
-**Rollback/review:** benchmark schema changes require a version bump and migration note. Keep provisional human cases out of scored releases until adjudication is complete.
+**Rollback/review:** benchmark schema changes require a version bump and migration note. Provisional cases may appear only in separately labeled provisional experiments/releases; promotion to independently validated gold requires the full independent annotation and adjudicator gate. Unresolved cases remain unscored at either grade.
 
 ## B03 — Lexical baseline and CLI
 
-**Outcome:** end-to-end BM25 baseline with `bindofell search` and `bindofell evaluate`, deterministic ranking, separate no-match/clarification decisions, metrics, manifests and per-case output.
+**Outcome:** end-to-end BM25 retrieval baseline with `bindofell search` and `bindofell evaluate`, deterministic ranked candidates, Task A metrics, manifests and per-case output. B/C outcome classification is a separate optional experiment and is not a required BM25 capability.
 
 **Files to create:**
 
 - `src/bindofell/retrieval/lexical.py` — BM25 index/build/query, deterministic normalization/tokenization and method configuration.
-- `src/bindofell/experiments/manifest.py` — source, benchmark, dependency, method, environment and timestamp metadata.
+- `src/bindofell/experiments/manifest.py` — sole owner of run manifests: source, benchmark/annotation grade, research corpus reference/digest (or unavailable status), dependency, method, environment and timestamp metadata. Identify static comparison fields separately from runtime observations.
 - `src/bindofell/cli.py` — `argparse` commands for loading a local estate/case file and writing result artifacts.
 - `src/bindofell/__main__.py` — `python -m bindofell` entry point.
-- `src/bindofell/experiments/run.py` — connect B01 adapter/documents, B02 evaluator, BM25 and output writers.
+- `src/bindofell/experiments/run.py` — connect B01 adapter/documents, B02 evaluator, BM25 and output writers. Any optional explicit outcome rule is applied separately from `retrieval/lexical.py` and reported as experimental classification.
 - `tests/unit/retrieval/test_lexical.py`, `tests/unit/experiments/test_manifest.py`, `tests/integration/test_cli_search.py`, `test_cli_evaluate.py`.
 - `docs/usage/cli.md` and README quickstart with synthetic inputs only until real benchmark rights/annotations are approved.
 
 **Commands and output contract:**
 
 - `bindofell search --estate PATH --requirement TEXT --profile names|field_descriptions|table_context --top-k N --output PATH` writes ordered field IDs, names, raw BM25 scores, evidence references and run config.
-- `bindofell evaluate --estate PATH --cases PATH --split train|validation|test --profile PROFILE --output-dir PATH` writes `metrics.json`, `cases.jsonl`, and `run.json` with denominators, threshold/config, source hashes, dependency lock and environment data.
-- Default output does not call scores “confidence” or “probability”. No-match and clarification decision rules/thresholds are method-specific, selected on validation and frozen before test.
+- `bindofell evaluate --estate PATH --cases PATH --split train|validation|test --profile PROFILE --output-dir PATH` writes `metrics.json`, `cases.jsonl`, and `run.json` with Task A rank metrics/denominators, method config, source hashes, annotation grade, dependency lock and environment data. Default outcome classification is not evaluated.
+- Scores are not “confidence” or “probability”. Optional no-match/clarification heuristics require explicit rule/version, inputs, label mapping, parameters and conflict handling; tune only on train/validation and freeze before test. Emit a separate experimental classification report across the full A/B/C set. No heuristic or reliable detection claim is required for B03 acceptance.
 
 **Tests to write first:**
 
@@ -187,16 +197,18 @@ Do not create a module early unless its owning work package needs it. The `data/
 5. `test_cli_search_emits_ranked_physical_ids_and_evidence`.
 6. `test_cli_evaluate_writes_metrics_manifest_and_per_case_rows`.
 7. `test_cli_rejects_unknown_snapshot_or_invalid_gold_before_scoring`.
+8. `test_without_explicit_decision_rule_classification_is_not_evaluated`, including empty and zero-score rankings.
+9. `test_reproducibility_projection_excludes_latency_and_timestamps` while comparing static manifests, documents, candidate order/scores, evidence and non-timing metrics.
 
-**Expected behavior and edge cases:** stable tokenization and ranking under the same locked environment; zero-score ties deterministic; missing text channels omitted; malformed inputs fail before index creation; output records candidate universe and all per-case results. A threshold can abstain but raw scores remain uncalibrated ranking values.
+**Expected behavior and edge cases:** stable tokenization and ranking under the same locked environment; zero-score ties deterministic; missing text channels omitted; malformed inputs fail before index creation; output records candidate universe and all per-case results. Empty/low-score lists do not prove no-match, and close/tied scores do not prove semantic ambiguity. Timing/timestamp fields remain variable and are excluded from deterministic equality projections.
 
 **Dependencies:** B01 and B02; add a locked BM25 implementation such as `bm25s` after compatibility review. Keep the CLI on `argparse` unless an existing convention is discovered in a populated repository before implementation.
 
 **Verification commands:** `uv run pytest tests/unit/retrieval tests/unit/experiments tests/integration/test_cli_search.py tests/integration/test_cli_evaluate.py -q`; `uv run ruff check`; `uv run pyright`; `uv run bindofell --help`.
 
-**Acceptance criteria:** both commands run from a clean locked environment; rankings return namespace-aware table-column IDs, evidence and raw scores; test and validation use identical candidate universe rules; metrics and all per-case predictions are written; no performance claims or hidden data copies.
+**Acceptance criteria:** both commands run from a clean locked environment using synthetic/resolved provisional fixtures; rankings return namespace-aware table-column IDs, evidence and raw scores; test and validation use identical candidate universe rules; Task A metrics and all per-case rankings are written; static reproducibility projections match. Optional classification is explicitly experimental and evaluated separately; B/C accuracy is not a milestone requirement. Independently validated benchmark claims retain the release gate.
 
-**Documentation:** CLI arguments, output formats, threshold policy, source fetch instructions, reproducible synthetic example and experiment manifest fields.
+**Documentation:** CLI arguments, output formats, retrieval/classification separation and optional heuristic policy, source fetch instructions, reproducible synthetic example, annotation grade and manifest comparison fields.
 
 **Scope exclusions:** dense retrieval, embedding downloads, API server, web UI, SQL generation and online services.
 
@@ -228,7 +240,7 @@ Do not create a module early unless its owning work package needs it. The `data/
 7. `test_names_description_and_table_context_are_separate_profiles`.
 8. `test_run_manifest_records_model_revision_weight_hash_and_device`.
 
-**Expected behavior and edge cases:** missing local model files produce an actionable error; dense and RRF ranks are reproducible under fixed model/config; non-finite vectors fail; cache keys cannot reuse vectors across changed weights or metadata profiles; all methods run on the same split and candidate universe. Record device, precision and batch size.
+**Expected behavior and edge cases:** missing local model files produce an actionable error; compare dense scores with a declared numerical tolerance/runtime policy and still check candidate order, reporting rank changes. BM25/RRF ordering and canonical serialization are deterministic under the same supported environment; latency and timestamps are observations. Non-finite vectors fail; cache keys cannot reuse vectors across changed weights or metadata profiles; all methods use the same split, annotation grade and candidate universe. Record device, precision and batch size; uncalibrated scores do not establish B/C labels.
 
 **Dependencies:** B03; one approved local embedding runtime/model package and immutable model files. Lock exact package/model revisions and hashes only after review. Unit tests use fake vectors and do not download a model.
 
@@ -244,4 +256,4 @@ Do not create a module early unless its owning work package needs it. The `data/
 
 ## Final review gate
 
-After B00 review, execute B01, B02, B03 and B04 sequentially. Each work package must meet its acceptance criteria and pass its listed verification before the next begins. B01 must not start from this document alone; the user must first review/approve the B00 source assessment, domain contracts and benchmark protocol. The embedding model decision is a separate B04 gate. Preserve exact source files, code revisions, gold version and per-case experiment outputs for every reported result.
+After B00 review, execute B01, B02, B03 and B04 sequentially. Each work package must meet its acceptance criteria and pass its listed verification before the next begins. B01 must not start from this document alone; the user must first review/approve the B00 source assessment, domain contracts and benchmark protocol. Engineering gates can use synthetic/provisional fixtures; releasing independently validated gold/results requires the separate independent review gate. The embedding model decision is a separate B04 gate. Preserve exact source files, code revisions, case/gold grade and version, research provenance status and per-case outputs for every reported result; compare deterministic projections rather than variable runtime observations.

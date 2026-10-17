@@ -17,7 +17,15 @@ The domain accepts any naming convention. It preserves source table and field la
 
 ## Core types
 
-These are conceptual contracts. B01 should define validated Python types and a versioned serialization rather than introduce separate packages for each type.
+These are conceptual contracts. Implement each in its single owning module below, with validated Python types and versioned serialization; consumers import the owner rather than redefine a contract.
+
+| Owning module | Slice | Contracts |
+|---|---|---|
+| `src/bindofell/domain/models.py` | B01 | `BusinessRequirement`, `EstateSnapshot`, `Dataset`, `Table`, `PhysicalField`, `Relationship`, `Evidence`, `SemanticBinding`, `DirectBinding`, `BindingCandidate`, and the optional serialization-only `DerivedBinding` envelope |
+| `src/bindofell/retrieval/documents.py` | B01 | `SearchDocument` and serializer profiles |
+| `src/bindofell/benchmark/models.py` | B02 | `EvaluationCase`, `GroundTruthMapping`, case labels, annotation grade/review state and split-group identity |
+| `src/bindofell/evaluation/contracts.py` | B02 | Per-case ranking results, optional outcome decisions and aggregate metric records |
+| `src/bindofell/experiments/manifest.py` | B03 | Run manifest and runtime observations |
 
 ### `BusinessRequirement`
 
@@ -63,9 +71,9 @@ Evidence is a typed, attributable record. It contains an evidence ID, evidence k
 
 ### `SemanticBinding`, `DirectBinding`, and future `DerivedBinding`
 
-`SemanticBinding` is a discriminated union over binding kinds. `DirectBinding` maps a requirement to one physical field ID. `DerivedBinding` is reserved for a named output plus one or more input field IDs, an expression/formula reference, grain and evidence. v0.1 may carry this type for forward-compatible serialization, but it does not evaluate formula correctness, generate SQL, or require a lineage engine.
+`SemanticBinding` has a versioned kind discriminator. The required v0.1 kind is `DirectBinding`, mapping a requirement to one physical field ID. Reserve `DerivedBinding` for a named output, input field IDs, an opaque expression/formula reference, grain and evidence. An optional serialization-only envelope may preserve that metadata; it neither parses nor executes expressions. No expression engine, formula generation, correctness evaluation or lineage engine belongs in B01–B04. Unsupported binding kinds fail explicitly at the v0.1 retrieval/evaluation boundary.
 
-“Needs clarification” and “no match” are retrieval outcomes, not binding kinds. They cannot be encoded as empty or fabricated `SemanticBinding` objects.
+“Needs clarification” and “no match” are outcome-classification labels, not binding kinds. They cannot be encoded as empty or fabricated `SemanticBinding` objects, and a ranked list alone does not establish either label. An optional outcome decision records its separate rule ID/version, inputs, configuration and rationale; without such a rule, classification is marked not evaluated.
 
 ### `BindingCandidate`
 
@@ -73,7 +81,7 @@ Evidence is a typed, attributable record. It contains an evidence ID, evidence k
 
 ### `EvaluationCase` and `GroundTruthMapping`
 
-`EvaluationCase` contains case ID, snapshot ID, business requirement, task label (`direct`, `no_match`, `needs_clarification`), split-group ID, annotator protocol version, and references to independently authored gold. `GroundTruthMapping` contains one or more accepted direct field IDs as alternatives, source evidence, rationale, rejected plausible candidates with reasons, and adjudication provenance. A case that requires multiple fields simultaneously is outside the v0.1 direct-field metric and must be represented as a future composite/derived track.
+`EvaluationCase` contains case ID, snapshot ID, business requirement, task label (`direct`, `no_match`, `needs_clarification`), split-group ID, protocol version, annotation grade (`provisional_curator` or `independently_validated`) and review state. `GroundTruthMapping` contains the task-specific accepted alternative field IDs or no-match/clarification annotation, source evidence, rationale, rejected plausible candidates with reasons, and curator/independent-review provenance. Both contracts belong only to `benchmark/models.py` in B02; B01 does not implement them. A case that requires multiple fields simultaneously is outside the v0.1 direct-field metric and must be represented as a future composite/derived track.
 
 Task labels are mutually exclusive. A no-match case has no valid target in the snapshot. A clarification case has at least two plausible targets and must identify the missing business dimension needed to select one. Neither is encoded as an empty gold list without a task label and reason.
 
@@ -95,7 +103,8 @@ Empty channels are omitted with the omission recorded; no fake placeholder text 
 - Source values and retrieval text remain separate.
 - Every scored candidate refers to the same snapshot used by its evaluation case.
 - Ranks are positive integers, raw scores are finite numbers, and method/configuration IDs are recorded.
-- Direct-binding gold IDs exist in the case snapshot. Task B and C cannot contain a direct gold mapping.
+- Direct-binding gold IDs and Task C plausible IDs exist in the case snapshot and eligible candidate universe. Out-of-universe references fail pre-scoring validation or cause an explicitly reported, method-independent case exclusion; they are not retrieval misses. Task B and C cannot contain a direct gold mapping.
+- An independently validated release requires two independent annotations and adjudicator sign-off; resolved provisional curator cases can support separately labeled engineering experiments.
 - Optional/missing metadata remains explicit and cannot cause a loader to silently substitute naming conventions.
 
 ## Serialization and versioning
