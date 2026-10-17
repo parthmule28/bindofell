@@ -109,7 +109,8 @@ Migration requires the **actual original decisions** from annotation records,
 not copying final gold into both annotators' records. Add the adjudicator's actual
 final mapping/sign-off, set case schema to `1.1`, increment the case corpus
 version and regenerate case digests and splits. New `1.1` provisional records
-also require their curator's mapping. No historical decisions are inferred.
+also require their curator's mapping, which must match final gold when resolved.
+No historical decisions are inferred.
 
 ## Candidate universe and gold integrity
 

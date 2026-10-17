@@ -150,6 +150,12 @@ class EvaluationCase(Contract):
                 raise ValueError("provisional_curator requires one curator and no adjudication")
             if self.annotations[0].independent:
                 raise ValueError("solo curator resolution is not independent validation")
+            if (
+                self.is_scorable
+                and self.annotations[0].mapping is not None
+                and self.annotations[0].mapping != self.gold
+            ):
+                raise ValueError("resolved curator mapping must match the complete final gold")
             if self.is_scorable and self.annotations[0].task_label != self.task_label:
                 raise ValueError("curator resolution must match gold")
         else:

@@ -79,14 +79,15 @@ To release cases or results as `independently_validated`:
    interpretations/missing dimension or B scope, and evidence for each annotator;
    agreement on A/B/C alone is insufficient.
 2. A distinct third adjudicator reviews disagreements against evidence and
-   signs off the final label/rationale and the complete final gold `mapping`. Record dissent and unresolved cases;
+   signs off the final label/rationale and the complete final gold `mapping`.
+   Record dissent and unresolved cases;
    do not overwrite original annotations with the resolution.
 3. Re-audit alternatives, B scope, C interpretations and source rights. Freeze
    case/gold/protocol versions, content digest, universe and splits.
 4. Publish only resolved cases in a scored partition. Label qualifications
    accurately; independent review alone is not proof of clinical expertise.
 
-The code checks recorded role IDs, independence flags, sign-off and label
+The code checks recorded role IDs, independence flags, sign-off, label consistency
 and mapping consistency. Independently validated cases use case schema `1.1`;
 see the [migration rules](../usage/b02-benchmark.md#review-mapping-records-and-migration).
 It cannot verify that people actually worked independently, that

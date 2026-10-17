@@ -286,3 +286,24 @@ def test_independent_decisions_are_context_validated_and_roundtrip_without_erasi
     value["annotations"][0]["mapping"]["evidence"][0]["source_digest"] = "b" * 64
     with pytest.raises(ValueError, match="annotation.*digest"):
         cases_from_jsonl(text([value]), snapshot, universe)
+
+
+def test_a_known_computation_record_cannot_be_relabelled_as_source_evidence():
+    from bindofell.benchmark.io import cases_from_jsonl
+    from bindofell.domain.models import EstateSnapshot
+
+    snapshot, universe, value = original_evidence_inputs()
+    data = snapshot.model_dump(mode="json")
+    source = value["gold"]["evidence"][0]
+    asset = next(f for f in data["fields"] if f["field_id"] == source["asset_id"])
+    asset["evidence"] = [
+        {
+            "evidence_id": source["evidence_id"],
+            "kind": "computation",
+            "computation": "synthetic-test",
+            "computation_version": "1",
+            "input_ids": [source["asset_id"]],
+        }
+    ]
+    with pytest.raises(ValueError, match="original evidence"):
+        cases_from_jsonl(text([value]), EstateSnapshot.model_validate(data), universe)

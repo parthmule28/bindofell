@@ -302,3 +302,15 @@ def test_adjudication_must_sign_off_the_complete_final_gold_mapping(mutation):
         value["annotations"][0]["task_label"] = "no_match"
     with pytest.raises(ValidationError, match="mapping"):
         EvaluationCase.model_validate(value)
+
+
+def test_resolved_curator_mapping_must_match_final_gold():
+    from bindofell.benchmark.models import EvaluationCase
+
+    value = payload()
+    value["schema_version"] = "1.1"
+    value["annotations"][0]["mapping"] = deepcopy(value["gold"])
+    assert EvaluationCase.model_validate(value).is_scorable
+    value["annotations"][0]["mapping"]["accepted_field_ids"].pop()
+    with pytest.raises(ValidationError, match="curator.*mapping"):
+        EvaluationCase.model_validate(value)

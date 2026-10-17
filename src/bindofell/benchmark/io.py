@@ -172,13 +172,12 @@ def _validate_source_evidence(evidence: Evidence, snapshot: EstateSnapshot) -> N
         e
         for asset in (*snapshot.tables, *snapshot.fields, *snapshot.relationships)
         for e in asset.evidence
-        if e.kind == "source"
     )
     same_id = tuple(e for e in originals if e.evidence_id == evidence.evidence_id)
     serialized = canonical_json(evidence.model_dump(mode="json"))
     if same_id and any(canonical_json(e.model_dump(mode="json")) != serialized for e in same_id):
         raise ValueError(f"source evidence {evidence.evidence_id}: modified original evidence ID")
-    attached = tuple(e for e in originals if e.asset_id == evidence.asset_id)
+    attached = tuple(e for e in originals if e.asset_id == evidence.asset_id and e.kind == "source")
     if attached:
         matches = tuple(
             e
