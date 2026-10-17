@@ -1,8 +1,9 @@
 # B01 metadata contracts and ingestion
 
 B01 implements the approved domain and metadata slice. `EvaluationCase` and
-`GroundTruthMapping` remain owned by B02 and are not implemented. There is no
-ranking, model inference, evaluation runner or search/evaluate command yet.
+`GroundTruthMapping` are owned by [B02](b02-benchmark.md), which now provides
+supplied-ranking evaluation. Ranking, model inference and search/evaluate
+commands remain future work.
 
 ## Snapshot format and identity
 
