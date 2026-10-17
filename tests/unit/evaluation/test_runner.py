@@ -184,17 +184,21 @@ def test_preflight_rejects_invalid_metadata_and_predictions(mutation, match):
         if mutation == "unresolved":
             value["review_state"] = "unresolved"
         elif mutation == "mixed_grade":
+            value["schema_version"] = "1.1"
             value["annotation_grade"] = "independently_validated"
             one = value["annotations"][0]
             value["annotations"] = []
             for suffix in ("one", "two"):
                 actor = {**one["annotator"], "person_id": "urn:toy:person:" + suffix}
-                value["annotations"].append({**one, "annotator": actor, "independent": True})
+                value["annotations"].append(
+                    {**one, "annotator": actor, "independent": True, "mapping": value["gold"]}
+                )
             value["adjudication"] = {
                 "adjudicator": {**one["annotator"], "person_id": "urn:toy:person:third"},
                 "signed_off": True,
                 "task_label": "direct",
                 "rationale": "Synthetic gate test",
+                "mapping": value["gold"],
             }
         else:
             value["family_links"] = [{"kind": "template", "family_id": "urn:toy:shared"}]

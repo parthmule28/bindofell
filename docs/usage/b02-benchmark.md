@@ -60,7 +60,7 @@ Each line is one `EvaluationCase` from `bindofell.benchmark.models`:
 
 | Fields | Meaning |
 |---|---|
-| `schema_version`, `case_version`, `case_id`, `snapshot_id` | Serialization `1.0`, independently versioned case corpus and immutable identities |
+| `schema_version`, `case_version`, `case_id`, `snapshot_id` | Case serialization `1.1` (legacy provisional `1.0` readable), independently versioned case corpus and immutable identities |
 | `requirement` | B01 `BusinessRequirement`, including verbatim text and explicit context |
 | `task_label`, `split_group_id`, `family_links` | A/B/C truth plus declared leakage groups; family kind and namespaced family ID |
 | `protocol_version`, `author_id`, `authoring_basis` | Original human authoring context and protocol reference |
@@ -87,6 +87,29 @@ case IDs, non-finite numbers (including overflow), malformed UTF-8 and blank
 records fail with source/line context and case ID when available. Unresolved
 records can be loaded for review but cannot be scored. Errors identify all
 invalid target IDs in the affected case. Case order is canonical by `case_id`.
+
+## Review mapping records and migration
+
+Case schema **`1.1`** adds each annotation's `mapping`, reusing the sole
+`GroundTruthMapping` contract (gold schema remains `1.0`). Every annotator records
+their own accepted OR fields, rejected candidates, plausible interpretations,
+missing dimension or no-match scope, rationale and evidence, even when two
+annotators agree on the A/B/C label. These original decisions are preserved;
+they need not agree with each other or the final gold.
+
+An adjudicator's `mapping` must equal the complete final gold for a resolved
+case, including field IDs, rejections, interpretations, evidence and gold version.
+Its separate rationale explains the resolution. Sign-off and distinct-reviewer
+requirements still apply. Each annotation/adjudication label must match its own
+mapping label.
+
+Existing provisional `1.0` cases remain readable. Independently validated cases
+must use `1.1`; label-only reviews cannot prove review of field mappings.
+Migration requires the **actual original decisions** from annotation records,
+not copying final gold into both annotators' records. Add the adjudicator's actual
+final mapping/sign-off, set case schema to `1.1`, increment the case corpus
+version and regenerate case digests and splits. New `1.1` provisional records
+also require their curator's mapping. No historical decisions are inferred.
 
 ## Candidate universe and gold integrity
 

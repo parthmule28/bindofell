@@ -25,21 +25,6 @@ class Contributor(Contract):
     domain_experience: Text
 
 
-class Annotation(Contract):
-    annotator: Contributor
-    independent: StrictBool
-    task_label: TaskLabel
-    rationale: Text
-    annotation_reference: Text
-
-
-class Adjudication(Contract):
-    adjudicator: Contributor
-    task_label: TaskLabel
-    signed_off: StrictBool
-    rationale: Text
-
-
 class CandidateRationale(Contract):
     field_id: Identifier
     rationale: Text
@@ -100,8 +85,37 @@ class GroundTruthMapping(Contract):
         return self
 
 
+class Annotation(Contract):
+    annotator: Contributor
+    independent: StrictBool
+    task_label: TaskLabel
+    rationale: Text
+    annotation_reference: Text
+    mapping: GroundTruthMapping | None = None
+
+    @model_validator(mode="after")
+    def decision_label(self) -> Self:
+        if self.mapping is not None and self.task_label != self.mapping.task_label:
+            raise ValueError("annotation label must match its mapping decision")
+        return self
+
+
+class Adjudication(Contract):
+    adjudicator: Contributor
+    task_label: TaskLabel
+    signed_off: StrictBool
+    rationale: Text
+    mapping: GroundTruthMapping | None = None
+
+    @model_validator(mode="after")
+    def decision_label(self) -> Self:
+        if self.mapping is not None and self.task_label != self.mapping.task_label:
+            raise ValueError("adjudication label must match its mapping decision")
+        return self
+
+
 class EvaluationCase(Contract):
-    schema_version: Literal["1.0"]
+    schema_version: Literal["1.0", "1.1"]
     case_version: Text
     case_id: Identifier
     snapshot_id: Identifier
@@ -126,6 +140,10 @@ class EvaluationCase(Contract):
     def review(self) -> Self:
         if self.task_label != self.gold.task_label:
             raise ValueError("case and gold task labels must match")
+        if self.annotation_grade == "independently_validated" and self.schema_version != "1.1":
+            raise ValueError("independent mapping review requires case schema_version 1.1")
+        if self.schema_version == "1.1" and any(a.mapping is None for a in self.annotations):
+            raise ValueError("case 1.1 requires every annotator's complete mapping decision")
         people = unique_sorted(tuple(a.annotator.person_id for a in self.annotations), "annotator")
         if self.annotation_grade == "provisional_curator":
             if len(people) != 1 or self.adjudication is not None:
@@ -140,6 +158,10 @@ class EvaluationCase(Contract):
             if self.is_scorable and (self.adjudication is None or not self.adjudication.signed_off):
                 raise ValueError("resolved validated grade requires adjudicator sign-off")
         if self.adjudication is not None:
+            if self.schema_version == "1.1" and self.adjudication.mapping is None:
+                raise ValueError("case 1.1 requires the adjudicator's complete mapping decision")
+            if self.is_scorable and self.adjudication.mapping != self.gold:
+                raise ValueError("adjudication mapping must match the complete final gold mapping")
             if self.adjudication.adjudicator.person_id in people:
                 raise ValueError("adjudicator must be distinct from annotators")
             if self.is_scorable and self.adjudication.task_label != self.task_label:

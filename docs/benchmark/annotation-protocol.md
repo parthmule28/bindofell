@@ -68,9 +68,12 @@ To release cases or results as `independently_validated`:
 
 1. At least two distinct annotators inspect the frozen metadata independently,
    without seeing each other's decisions or retriever outputs. Retain each
-   original annotation reference, decision, rationale and contributor details.
+   original annotation reference, complete `mapping` decision, rationale and
+   contributor details. Preserve exact accepted/rejected field IDs, C
+   interpretations/missing dimension or B scope, and evidence for each annotator;
+   agreement on A/B/C alone is insufficient.
 2. A distinct third adjudicator reviews disagreements against evidence and
-   signs off the final label/rationale. Record dissent and unresolved cases;
+   signs off the final label/rationale and the complete final gold `mapping`. Record dissent and unresolved cases;
    do not overwrite original annotations with the resolution.
 3. Re-audit alternatives, B scope, C interpretations and source rights. Freeze
    case/gold/protocol versions, content digest, universe and splits.
@@ -78,7 +81,9 @@ To release cases or results as `independently_validated`:
    accurately; independent review alone is not proof of clinical expertise.
 
 The code checks recorded role IDs, independence flags, sign-off and label
-consistency. It cannot verify that people actually worked independently, that
+and mapping consistency. Independently validated cases use case schema `1.1`;
+see the [migration rules](../usage/b02-benchmark.md#review-mapping-records-and-migration).
+It cannot verify that people actually worked independently, that
 identities are truthful, or that a semantic judgment is correct. Unresolved
 records may be archived but are rejected from scoring. A grade requesting
 independent validation may retain unresolved review history; that is not a

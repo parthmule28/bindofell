@@ -73,9 +73,15 @@ def person(name):
 
 def validated_payload():
     value = payload()
+    value["schema_version"] = "1.1"
     value["annotation_grade"] = "independently_validated"
     value["annotations"] = [
-        {**value["annotations"][0], "annotator": person(n), "independent": True}
+        {
+            **value["annotations"][0],
+            "annotator": person(n),
+            "independent": True,
+            "mapping": deepcopy(value["gold"]),
+        }
         for n in ("one", "two")
     ]
     value["adjudication"] = {
@@ -83,6 +89,7 @@ def validated_payload():
         "task_label": "direct",
         "signed_off": True,
         "rationale": "Synthetic review gate test, not a real review",
+        "mapping": deepcopy(value["gold"]),
     }
     return value
 
@@ -204,4 +211,94 @@ def test_provisional_is_curator_resolution_and_unresolved_is_not_scorable():
     assert not EvaluationCase.model_validate(value).is_scorable
     value["adjudication"] = validated_payload()["adjudication"]
     with pytest.raises(ValidationError):
+        EvaluationCase.model_validate(value)
+
+
+def mapping_review_payload(label="direct"):
+    value = validated_payload()
+    value["schema_version"] = "1.1"
+    value["task_label"] = label
+    value["gold"] = deepcopy(payload(label)["gold"])
+    for annotation in value["annotations"]:
+        annotation["task_label"] = label
+        annotation["mapping"] = deepcopy(value["gold"])
+        annotation["mapping"]["gold_version"] = annotation["annotator"]["person_id"] + "/decision/1"
+    value["adjudication"]["task_label"] = label
+    value["adjudication"]["mapping"] = deepcopy(value["gold"])
+    return value
+
+
+def test_label_only_independent_reviews_cannot_claim_validated_mappings():
+    from bindofell.benchmark.models import EvaluationCase
+
+    value = validated_payload()
+    value["schema_version"] = "1.0"
+    for annotation in value["annotations"]:
+        annotation.pop("mapping", None)
+    value["adjudication"].pop("mapping", None)
+    with pytest.raises(ValidationError, match="mapping"):
+        EvaluationCase.model_validate(value)
+
+
+def test_same_label_field_disagreements_survive_review_serialization():
+    from bindofell.benchmark.models import EvaluationCase
+
+    value = mapping_review_payload()
+    alpha, beta = value["gold"]["accepted_field_ids"]
+    for annotation, accepted, rejected in zip(
+        value["annotations"], (alpha, beta), (beta, alpha), strict=True
+    ):
+        annotation["mapping"]["accepted_field_ids"] = [accepted]
+        annotation["mapping"]["rejected_candidates"] = [
+            {"field_id": rejected, "rationale": "Synthetic disagreement about entity"}
+        ]
+    case = EvaluationCase.model_validate(value)
+    restored = EvaluationCase.model_validate_json(case.model_dump_json())
+    assert restored.annotations[0].mapping.accepted_field_ids == (alpha,)
+    assert restored.annotations[1].mapping.accepted_field_ids == (beta,)
+    assert restored.annotations[0].mapping.rejected_candidates[0].field_id == beta
+    assert restored.annotations[1].mapping.rejected_candidates[0].field_id == alpha
+    assert restored.gold.accepted_field_ids == (alpha, beta)
+    assert restored.adjudication.mapping == restored.gold
+
+
+@pytest.mark.parametrize("label", ["direct", "no_match", "needs_clarification"])
+def test_every_independent_annotation_requires_its_own_complete_mapping(label):
+    from bindofell.benchmark.models import EvaluationCase
+
+    value = mapping_review_payload(label)
+    if label == "no_match":
+        value["annotations"][0]["mapping"]["scope"] = "Synthetic narrower reviewed scope"
+    elif label == "needs_clarification":
+        value["annotations"][0]["mapping"]["missing_dimension"] = "date role"
+    case = EvaluationCase.model_validate(value)
+    if label == "no_match":
+        assert case.annotations[0].mapping.scope == "Synthetic narrower reviewed scope"
+    elif label == "needs_clarification":
+        assert case.annotations[0].mapping.missing_dimension == "date role"
+    else:
+        assert case.annotations[0].mapping.accepted_field_ids == (
+            field_id("toy", "Alpha", "key"),
+            field_id("toy", "Beta", "key"),
+        )
+    del value["annotations"][0]["mapping"]
+    with pytest.raises(ValidationError, match="mapping"):
+        EvaluationCase.model_validate(value)
+
+
+@pytest.mark.parametrize("mutation", ["missing", "fields", "evidence", "label"])
+def test_adjudication_must_sign_off_the_complete_final_gold_mapping(mutation):
+    from bindofell.benchmark.models import EvaluationCase
+
+    value = mapping_review_payload()
+    assert EvaluationCase.model_validate(value).is_scorable
+    if mutation == "missing":
+        del value["adjudication"]["mapping"]
+    elif mutation == "fields":
+        value["adjudication"]["mapping"]["accepted_field_ids"].pop()
+    elif mutation == "evidence":
+        value["adjudication"]["mapping"]["evidence"][0]["value"] = "Changed evidence"
+    else:
+        value["annotations"][0]["task_label"] = "no_match"
+    with pytest.raises(ValidationError, match="mapping"):
         EvaluationCase.model_validate(value)

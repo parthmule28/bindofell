@@ -46,7 +46,7 @@ def _finite_float(value: str) -> float:
     return number
 
 
-def strict_object(text: str) -> dict[str, object]:
+def strict_object(text: str, *, schema_versions: tuple[str, ...] = ("1.0",)) -> dict[str, object]:
     text.encode("utf-8", errors="strict")
     value: object = json.loads(
         text, object_pairs_hook=_object, parse_constant=_nonfinite, parse_float=_finite_float
@@ -56,14 +56,17 @@ def strict_object(text: str) -> dict[str, object]:
     result = cast(dict[str, object], value)
     # Also reject lone surrogate escapes, including in nested string values/keys.
     canonical_json(result).encode("utf-8", errors="strict")
-    if result.get("schema_version") != "1.0":
+    if result.get("schema_version") not in schema_versions:
         raise ValueError(
-            f"case={result.get('case_id', '<unknown>')}: unsupported schema_version (expected 1.0)"
+            f"case={result.get('case_id', '<unknown>')}: "
+            f"unsupported schema_version (expected {schema_versions})"
         )
     return result
 
 
-def jsonl_objects(text: str, source: str) -> Iterator[tuple[int, dict[str, object]]]:
+def jsonl_objects(
+    text: str, source: str, *, schema_versions: tuple[str, ...] = ("1.0",)
+) -> Iterator[tuple[int, dict[str, object]]]:
     lines = text.split("\n")
     if lines[-1] == "":
         lines.pop()
@@ -71,7 +74,7 @@ def jsonl_objects(text: str, source: str) -> Iterator[tuple[int, dict[str, objec
         try:
             if not data.strip():
                 raise ValueError("blank JSONL record")
-            yield line, strict_object(data)
+            yield line, strict_object(data, schema_versions=schema_versions)
         except ValueError as exc:
             raise ValueError(f"{source}:line={line}: {exc}") from exc
 
@@ -182,7 +185,7 @@ def cases_from_jsonl(
     validate_universe(universe, snapshot)
     cases: list[EvaluationCase] = []
     seen: set[str] = set()
-    for line, value in jsonl_objects(text, source):
+    for line, value in jsonl_objects(text, source, schema_versions=("1.0", "1.1")):
         case_id = value.get("case_id", "<unknown>")
         try:
             case = EvaluationCase.model_validate(value)
