@@ -20,6 +20,7 @@ from bindofell.evaluation.contracts import MethodSpec
 from bindofell.retrieval.documents import (
     PROFILES,
     Profile,
+    SearchDocument,
     build_search_documents,
     documents_to_jsonl,
 )
@@ -83,17 +84,38 @@ class _Factory(Protocol):
 
 
 class LexicalIndex:
-    def __init__(self, snapshot: EstateSnapshot, universe: EligibleUniverse, *, profile: Profile):
+    def __init__(
+        self,
+        snapshot: EstateSnapshot,
+        universe: EligibleUniverse,
+        *,
+        profile: Profile,
+        documents: Iterable[SearchDocument] | None = None,
+    ):
         validate_universe(universe, snapshot)
         if profile not in PROFILES:
             raise ValueError(f"unknown profile: {profile}")
         self.snapshot = snapshot
         self.universe = universe
-        self.documents = tuple(
-            d
-            for d in build_search_documents(snapshot, profile=profile)
-            if d.field_id in set(universe.field_ids)
+        eligible = set(universe.field_ids)
+        expected = tuple(
+            sorted(
+                (
+                    d
+                    for d in build_search_documents(snapshot, profile=profile)
+                    if d.field_id in eligible
+                ),
+                key=lambda d: d.field_id,
+            )
         )
+        supplied = (
+            expected if documents is None else tuple(sorted(documents, key=lambda d: d.field_id))
+        )
+        if supplied != expected:
+            raise ValueError(
+                "documents must exactly match the B01 snapshot/profile and complete eligible universe"
+            )
+        self.documents = supplied
         self.documents_digest = content_digest(documents_to_jsonl(self.documents))
         self.tokens = tuple(
             tokenize("\n".join(c.value for c in d.channels)) for d in self.documents

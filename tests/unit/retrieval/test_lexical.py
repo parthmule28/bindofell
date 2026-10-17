@@ -111,3 +111,79 @@ def test_invalid_top_k_fails(top_k):
 def test_unknown_profile_fails():
     with pytest.raises(ValueError, match="profile"):
         index(profile="unknown")
+
+
+def test_profile_changes_text_and_tokens_but_never_candidate_membership():
+    names = index(profile="names")
+    described = index(profile="field_descriptions")
+    context = index(profile="table_context")
+    assert (
+        names.method.indexed_field_ids
+        == described.method.indexed_field_ids
+        == (context.method.indexed_field_ids)
+    )
+    assert names.method.universe_digest == make_universe(estate()).digest
+    assert names.tokens_digest != described.tokens_digest
+    assert names.method.config["profile"] == "names"
+    assert names.method.config["dtype"] == "float64"
+    assert names.method.config["tokenizer_id"] == "bindofell.nfkc-casefold-words/1"
+
+
+@pytest.mark.parametrize(
+    "mutation", ["missing", "duplicate", "snapshot", "ineligible", "profile", "text"]
+)
+def test_invalid_b01_documents_fail_before_index_creation(mutation):
+    from bindofell.retrieval.documents import build_search_documents
+    from bindofell.retrieval.lexical import LexicalIndex
+
+    snapshot = estate()
+    universe = make_universe(snapshot)
+    documents = list(build_search_documents(snapshot, profile="names"))
+    if mutation == "missing":
+        documents.pop()
+    elif mutation == "duplicate":
+        documents.append(documents[0])
+    elif mutation == "snapshot":
+        documents[0] = documents[0].model_copy(update={"snapshot_id": "urn:toy:wrong"})
+    elif mutation == "ineligible":
+        universe = make_universe(
+            snapshot, field_ids=universe.field_ids[:2], rule_id="urn:toy:eligibility:subset"
+        )
+    elif mutation == "profile":
+        documents[0] = documents[0].model_copy(update={"profile": "table_context"})
+    else:
+        document = documents[0]
+        channel = document.channels[0].model_copy(update={"value": "leaked gold answer"})
+        documents[0] = document.model_copy(update={"channels": (channel, *document.channels[1:])})
+    with pytest.raises(ValueError, match="document"):
+        LexicalIndex(snapshot, universe, profile="names", documents=documents)
+
+
+def test_b01_channel_evidence_and_frozen_subset_are_preserved(omop_snapshot):
+    from bindofell.retrieval.documents import build_search_documents
+    from bindofell.retrieval.lexical import LexicalIndex
+
+    universe = make_universe(
+        omop_snapshot,
+        field_ids=(omop_snapshot.fields[0].field_id,),
+        rule_id="urn:toy:eligibility:first",
+    )
+    documents = [
+        d
+        for d in build_search_documents(omop_snapshot, profile="field_descriptions")
+        if d.field_id in universe.field_ids
+    ]
+    service = LexicalIndex(
+        omop_snapshot, universe, profile="field_descriptions", documents=documents
+    )
+    result = service.search("identifier", requirement_id="urn:toy:q", top_k=None)
+    assert tuple(c.field_id for c in result) == universe.field_ids
+    original = {
+        e.evidence_id: e
+        for asset in (*omop_snapshot.tables, *omop_snapshot.fields)
+        for e in asset.evidence
+    }
+    channel_ids = {i for d in documents for c in d.channels for i in c.evidence_ids}
+    source = {e.evidence_id: e for e in result[0].evidence if e.kind == "source"}
+    assert channel_ids and set(source) == channel_ids
+    assert all(source[i] == original[i] for i in channel_ids)
