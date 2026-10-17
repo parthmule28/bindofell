@@ -13,6 +13,9 @@ dependencies = [
     "pydantic>=2.11,<3",
 ]
 
+[project.scripts]
+bindofell = "bindofell.cli:main"
+
 [dependency-groups]
 dev = ["pytest>=8,<10", "ruff>=0.11,<1", "pyright[nodejs]>=1.1.400,<2"]
 
