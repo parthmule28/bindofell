@@ -8,7 +8,7 @@ Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).
 
 ```sh
 uv sync --locked --all-groups
-uv run pytest tests/unit -q -W error
+uv run pytest tests/unit tests/integration -q -W error
 uv run ruff check
 uv run pyright
 ```
@@ -33,8 +33,8 @@ uv run python scripts/fetch_omop_metadata.py --verify-only
 
 The default `.data/omop-v5.5.0/` output is ignored by Git. Acquisition refuses
 overwrites and checks the release commit and reviewed file hashes. Unit tests
-use only synthetic fixtures and block network connections. Ranking and
-`bindofell search/evaluate` remain deferred to later work packages.
+use only synthetic fixtures and block network connections. B03 now provides
+local BM25 search/evaluation through the CLI below.
 
 See [B01 formats and usage](docs/usage/b01-metadata.md), the
 [core contracts](docs/design/0001-bindofell-core.md), the
@@ -53,5 +53,25 @@ case/gold versions, annotation grade, evidence, raw scores and static provenance
 See the runnable [B02 usage example](docs/usage/b02-benchmark.md),
 [annotation protocol](docs/benchmark/annotation-protocol.md) and
 [synthetic fixtures](tests/fixtures/benchmark/README.md). No real OMOP pilot or
-independently validated gold is included. B02 requires independent review before
-B03 begins.
+independently validated gold is included. B02 was independently reviewed and
+merged before B03 implementation.
+
+
+## B03: local BM25 search and reproducible evaluation
+
+```sh
+uv run bindofell search --estate tests/fixtures/benchmark/toy_estate.json --requirement "Alpha key" --profile names --top-k 5
+mkdir -p .data/b03-smoke
+uv run bindofell evaluate --estate tests/fixtures/benchmark/toy_estate.json --cases tests/fixtures/benchmark/toy_cases.jsonl --split all --seed 17 --profile names --output-dir .data/b03-smoke/run-a
+```
+
+`python -m bindofell` exposes the same commands. Search emits qualified field
+IDs, raw scores and source/computation evidence. Evaluation uses all eligible
+fields for unrestricted MRR and delegates metrics to B02. No B/C classifier or
+approved mapping is inferred. `--seed` and `--split all` are exploratory;
+use a frozen `--split-manifest` for reviewed partition replay.
+
+Read [CLI formats, tokenization, manifests and twice-run smoke checks](docs/usage/cli.md).
+The two-table/eight-field/three-case fixture is an engineering demonstration;
+no real OMOP accuracy or expert gold is claimed. B03 stops for independent review
+before B04.

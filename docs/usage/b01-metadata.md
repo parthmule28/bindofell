@@ -2,8 +2,8 @@
 
 B01 implements the approved domain and metadata slice. `EvaluationCase` and
 `GroundTruthMapping` are owned by [B02](b02-benchmark.md), which now provides
-supplied-ranking evaluation. Ranking, model inference and search/evaluate
-commands remain future work.
+supplied-ranking evaluation. [B03](cli.md) now adds local BM25 search/evaluate
+commands. Model inference remains outside these work packages.
 
 ## Snapshot format and identity
 
@@ -141,5 +141,5 @@ snapshot hashes verify one particular stored acquisition, including its timestam
 
 Unit tests block network connections. Real acquisition/import is an explicit
 separate check. Pyright's Node runtime is locked through the `pyright[nodejs]`
-development dependency. No `bindofell` executable is declared until its B03
-implementation exists.
+development dependency. The B03 `bindofell` executable is documented in the
+[CLI guide](cli.md).
